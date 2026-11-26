@@ -181,7 +181,7 @@ oras restore [flags] --input <path> <target-registry>[/<namespace>]
 
 **Mode 2: Selective Restore**
 ```bash
-oras restore [flags] --input <path> <target-repo1> <target-repo2> [<target-repo3>...]
+oras restore [flags] --input <path> --include <pattern> [--include <pattern>...] <target-registry>[/<namespace>]
 ```
 
 **Mode 3: Restore with Rules**
@@ -192,7 +192,8 @@ oras restore [flags] --input <path> --rules <rules-file>
 ### Behavior
 
 - **All repositories**: If only a target registry (optionally with a namespace) is specified, all repositories from the backup are restored under it
-- **Selective repositories**: Specific repository destinations can be provided
+- **Target only**: The positional argument says only where artifacts go. It never carries a tag or digest; `oras restore --input backup.tar registry.mycompany.com/mirror:v1` is rejected, because `:v1` would read as a destination tag
+- **Selective repositories and tags**: What to restore is chosen with `--include` patterns that match the source references in the backup, never with the target argument
 - **Repository mapping**: Complex mappings via rules file
 - **Name preservation**: By default, repository paths and tags from the backup are preserved; only the source registry host is replaced by the target
 - **Flexible targets**: Can restore to different registries than original backup source
@@ -248,19 +249,37 @@ oras restore --input base-images.tar registry.mycompany.com/mirror
 
 #### Mode 2: Selective Repository Restore
 
-Restore only specific repositories from backup. Specify target repositories to filter which ones to restore. Repository paths from the backup are preserved.
+Restore only some of the artifacts in a backup. `--include` selects artifacts by their **source** reference, and the positional argument is the same `<target-registry>[/<namespace>]` as in Mode 1. Selection and destination are kept apart, so a selector is never mistaken for a destination.
 
 ```bash
 oras restore --input base-images.tar \
-  registry.mycompany.com/library/alpine \
-  registry.mycompany.com/library/busybox
+  --include library/alpine \
+  --include library/busybox \
+  registry.mycompany.com
 ```
 
+**Pattern syntax:** `[<registry>/]<repository>[:<tag>]`
+
+- A pattern matches a stored reference `<registry>/<repository>:<tag>` either in full or without its registry, so the registry is optional
+- Without `:<tag>`, every tag of the matching repositories is selected
+- `*` matches any sequence of characters, including `/`
+
+| Pattern | Selects |
+|---|---|
+| `library/alpine` | every tag of `library/alpine`, from any source registry |
+| `docker.io/library/alpine` | every tag of `library/alpine` from `docker.io` only |
+| `library/alpine:3.19.0` | one tag |
+| `*:v1` | tag `v1` in every repository |
+| `library/*` | every repository under `library/` |
+
 **Behavior:**
-- Filters repositories from backup based on command-line targets
-- Repository structure is **preserved** (e.g., `docker.io/library/alpine` → `registry.mycompany.com/library/alpine`)
-- Only the registry hostname changes, paths remain the same
-- A target selects the backed-up repository with the same path. If that path exists under more than one source registry in the backup (e.g., `docker.io/library/nginx` and `mirror.gcr.io/library/nginx`), restore fails and asks for a rules file (Mode 3) to pick the source
+- `--include` can be repeated; an artifact is restored if it matches any pattern
+- A pattern that matches nothing fails before anything is pushed, so typos are not silently ignored
+- Selected artifacts are mapped exactly as in Mode 1: repository paths are **preserved** under the target (e.g., `docker.io/library/alpine` → `registry.mycompany.com/library/alpine`), and `--preserve-source-registry` applies
+- If a pattern selects the same path under more than one source registry (e.g., `docker.io/library/nginx` and `mirror.gcr.io/library/nginx`), the usual [collision check](#collisions) applies. Add the registry to the pattern, use `--preserve-source-registry`, or use a rules file (Mode 3)
+- Tag-only entries from backups created by earlier versions have no repository, so only the tag part of a pattern applies to them (e.g., `*:v1`)
+- `--include` cannot be combined with `--rules`, whose mappings select their own sources and tags
+- An `--exclude` flag with the same syntax may be added later
 
 **Output:**
 ```console
@@ -287,7 +306,7 @@ For **advanced scenarios** requiring repository renaming or restructuring, use a
 
 > [!IMPORTANT]
 > The `--rules` flag cannot be used together with positional repository arguments. Use either:
-> - Positional args for direct/selective restore (Mode 1 & 2)
+> - A positional target for direct/selective restore (Mode 1 & 2)
 > - Rules file for complex remapping scenarios (Mode 3)
 
 **Rules File (`restore-rules.json`):**
@@ -377,12 +396,19 @@ The flag applies to Mode 1 and Mode 2. It cannot be combined with `--rules`, whe
 
 ### Selective Tag Restoration
 
-Restore specific tags from specific repositories:
+Restore specific tags from specific repositories with `--include` (Mode 2):
 
 ```bash
 oras restore --input base-images.tar \
-  registry.mycompany.com/library/alpine:3.19.0 \
-  registry.mycompany.com/library/busybox:1.36.1
+  --include library/alpine:3.19.0 \
+  --include library/busybox:1.36.1 \
+  registry.mycompany.com
+```
+
+Restore one tag from every repository in the backup:
+
+```bash
+oras restore --input base-images.tar --include '*:v1' registry.mycompany.com
 ```
 
 **Output:**
@@ -706,8 +732,8 @@ oras restore --input backup.tar --rules rules.json registry.io/repo
 Error: --rules cannot be used with positional repository arguments.
 
 Use either:
-  - Positional args for direct/selective restore:
-      oras restore --input backup.tar registry.io/repo1 registry.io/repo2
+  - A target registry, optionally with --include, for direct/selective restore:
+      oras restore --input backup.tar --include library/alpine registry.io
   
   - Rules file for repository mapping:
       oras restore --input backup.tar --rules rules.json
@@ -718,7 +744,9 @@ Other validation errors, all raised before any artifact is copied:
 - **Credential flags with multiple registries**: `--username`, `--password`, `--password-stdin` or `--identity-token` used with references from more than one registry (see [Authentication Handling](#authentication-handling))
 - **Target collisions**: two source repositories map to the same target repository (see [Collisions](#collisions))
 - **Tag conflicts**: two sources write the same tag to the same target repository
-- **Conflicting options**: `--preserve-source-registry` used together with `--rules`
+- **Tag or digest in the restore target**: the positional argument must be `<target-registry>[/<namespace>]`; use `--include` to select tags
+- **Unmatched patterns**: an `--include` pattern that matches nothing in the backup
+- **Conflicting options**: `--preserve-source-registry` or `--include` used together with `--rules`
 
 ## Authentication Handling
 
@@ -833,6 +861,11 @@ oras restore --input /backups/critical-apps-20251120.tar \
 # Then actual restore
 oras restore --input /backups/critical-apps-20251120.tar \
   registry.mycompany.com
+
+# Or restore only the frontend
+oras restore --input /backups/critical-apps-20251120.tar \
+  --include production/frontend \
+  registry.mycompany.com
 ```
 
 ### Use Case 4: Repository Consolidation
@@ -927,6 +960,7 @@ Tools that package images for air-gapped environments can read the full referenc
 ### Restore Flags (New)
 
 - `--rules <file>`: Rules configuration file for repository mapping
+- `--include <pattern>`: Restore only the artifacts whose source reference matches `[<registry>/]<repository>[:<tag>]`, with `*` as a wildcard (Mode 2). Repeatable. Cannot be used with `--rules`.
 - `--preserve-source-registry`: Keep the source registry host as the first path component of each target repository (Modes 1 and 2). Avoids collisions when restoring a multi-registry backup to one registry. Cannot be used with `--rules`.
 
 ### Common Flags (Enhanced)
@@ -956,10 +990,19 @@ oras restore --input backup.tar target.com
 
 Tag-only backups created by earlier versions are the exception: they record no repository path, so the argument remains the target repository.
 
+**Tag selection:** the target argument no longer accepts tags. Today `oras restore --input backup.tar target.com/repo:v1,v2` restores only `v1` and `v2`; it is now rejected with an error instead of being reinterpreted, so existing scripts fail visibly rather than restoring everything. Use `--include` instead:
+
+```bash
+# Before
+oras restore --input backup.tar target.com/repo:v1,v2
+# Now
+oras restore --input backup.tar --include '*:v1' --include '*:v2' target.com/repo
+```
+
 **Backup format:** `oras backup` and `oras restore` are experimental, and this proposal changes the backup format without an opt-in flag:
 
 - **New backups, new client**: Supported.
-- **Old (tag-only) backups, new client**: Supported. Restore treats a tag-only `ref.name` as a tag and requires an explicit target repository, as today.
+- **Old (tag-only) backups, new client**: Supported. Restore treats a tag-only `ref.name` as a tag and requires an explicit target repository, as today. Tags are selected with `--include` (e.g., `--include '*:v1'`) rather than a `:tag` suffix on the target.
 - **New backups, old client**: Not supported. Earlier versions use the `ref.name` value directly as the destination tag, which fails for a full reference. Users must upgrade the client that restores.
 - **Other ORAS commands on new backups**: Address artifacts with `--oci-layout-path <path> <full-reference>`; `--oci-layout <path>:<tag>` no longer resolves (see [Inspecting Backup Contents](#inspecting-backup-contents)).
 
@@ -980,6 +1023,6 @@ Key features:
 
 **Out of Scope:**
 - **Entire registry backup**: Not supported. Use registry-native replication/backup features for registry-wide operations.
-- **Pattern-based selection**: Not included in this proposal. May be considered in future iterations if customer demand exists.
+- **Pattern-based backup selection**: Backup takes explicit references only; wildcards over registry contents are not included in this proposal and may be considered in future iterations if customer demand exists. (Restore's `--include` patterns only match what is already in the backup.)
 - **Per-registry connection settings**: Connection flags apply to all source registries. Split the backup if registries need different TLS or header settings.
 
