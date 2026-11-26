@@ -85,6 +85,8 @@ func backupCmd() *cobra.Command {
 		Long: `[Experimental] Back up artifacts from a registry into an OCI image layout, saved either as a directory or a tar archive.
 The output format is determined by the file extension of the specified output path: if it ends with ".tar", the output will be a tar archive; otherwise, it will be a directory.
 
+With --platform, a multi-platform image is backed up as the manifest for that platform, and an image built for another platform is left out. Artifacts without a platform, such as Helm charts and SBOMs, are copied unchanged. Referrers of a multi-platform index (e.g. signatures) and attestations inside the index are not kept.
+
 Example - Back up a single artifact to a directory:
   oras backup --output hello localhost:5000/hello:v1
 
