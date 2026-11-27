@@ -54,14 +54,13 @@ type restoreOptions struct {
 	preserveSourceRegistry bool
 
 	// derived options
-	repository string // target registry, optionally with a namespace
-	tags       []string
+	target string // target registry, optionally with a namespace
 }
 
 func restoreCmd() *cobra.Command {
 	var opts restoreOptions
 	cmd := &cobra.Command{
-		Use:   "restore [flags] --input <path> <registry>[/<namespace>][:<ref1>[,<ref2>...]]",
+		Use:   "restore [flags] --input <path> <registry>[/<namespace>]",
 		Short: "[Experimental] Restore artifacts to a registry from an OCI image layout",
 		Long: `[Experimental] Restore artifacts to a registry from an OCI image layout, which can be either a directory or a tar archive.
 
@@ -77,9 +76,6 @@ Example - Restore all tagged artifacts from a directory under a namespace:
 
 Example - Perform a dry run without actually uploading artifacts:
   oras restore --input hello --dry-run localhost:5000
-
-Example - Restore multiple specific tags:
-  oras restore --input hello localhost:5000/backup:v1,v2
 
 Example - Keep the source registry in the target repository path:
   oras restore --input hello --preserve-source-registry localhost:5000
@@ -108,9 +104,9 @@ Example - Set custom concurrency level:
 				return err
 			}
 
-			// parse target and tags
+			// parse target
 			var err error
-			opts.repository, opts.tags, err = parseRestoreTarget(args[0])
+			opts.target, err = parseRestoreTarget(args[0])
 			if err != nil {
 				return err
 			}
@@ -131,7 +127,7 @@ Example - Set custom concurrency level:
 	cmd.Flags().BoolVar(&opts.excludeReferrers, "exclude-referrers", false, "restore artifacts excluding their referrers")
 	cmd.Flags().BoolVar(&opts.dryRun, "dry-run", false, "simulate the restore process without actually uploading any artifacts")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
-	cmd.Flags().BoolVar(&opts.preserveSourceRegistry, "preserve-source-registry", false, "keep the source registry as the first path component of each target repository")
+	cmd.Flags().BoolVar(&opts.preserveSourceRegistry, "preserve-source-registry", false, "keep the source registry as the first path component of each target repository; source registries with a port are not supported")
 	opts.EnableDistributionSpecFlag()
 	// apply flags
 	option.ApplyFlags(&opts, cmd.Flags())
@@ -193,7 +189,7 @@ func doRestore(
 	}
 
 	// resolve tags to restore
-	srcRefs, tags, roots, err := resolveRestoreRefs(ctx, srcOCI, opts.tags)
+	srcRefs, tags, roots, err := resolveRestoreRefs(ctx, srcOCI)
 	if err != nil {
 		return err
 	}
@@ -204,7 +200,7 @@ func doRestore(
 		}
 	}
 	// map each artifact to its target repository before pushing anything
-	dstRepos, err := restoreTargets(opts.repository, srcRefs, opts.preserveSourceRegistry)
+	dstRepos, err := restoreTargets(opts.target, srcRefs, opts.preserveSourceRegistry)
 	if err != nil {
 		return err
 	}
@@ -278,7 +274,7 @@ func doRestore(
 	}
 
 	duration := time.Since(startTime)
-	return metadataHandler.OnRestoreCompleted(len(tags), opts.repository, duration)
+	return metadataHandler.OnRestoreCompleted(len(tags), opts.target, duration)
 }
 
 // resolveRestoreRefs resolves the artifacts to restore from the backup in src.
@@ -287,46 +283,16 @@ func doRestore(
 //
 // Backups store the full reference (<registry>/<repository>:<tag>) in
 // org.opencontainers.image.ref.name. Backups created by earlier versions store
-// only the tag. Specified tags are matched against the tag of each stored
-// reference, so they work with either format, and a specified tag selects the
-// artifacts with that tag in every repository of the backup.
-func resolveRestoreRefs(ctx context.Context, src oras.ReadOnlyTarget, specifiedTags []string) (srcRefs, tags []string, roots []ocispec.Descriptor, err error) {
-	storedRefs, storedRoots, err := resolveTags(ctx, src, nil)
+// only the tag.
+func resolveRestoreRefs(ctx context.Context, src oras.ReadOnlyTarget) (srcRefs, tags []string, roots []ocispec.Descriptor, err error) {
+	srcRefs, roots, err = resolveTags(ctx, src, nil)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	// When tags are specified, entries that are not requested are not checked,
-	// so an unrelated entry in the layout does not block the restore.
-	restoreAll := len(specifiedTags) == 0
-	byTag := make(map[string][]int, len(storedRefs))
-	storedTags := make([]string, len(storedRefs))
-	for i, ref := range storedRefs {
-		tag, err := tagFromRefName(ref)
-		if err != nil {
-			if restoreAll {
-				return nil, nil, nil, err
-			}
-			continue
-		}
-		byTag[tag] = append(byTag[tag], i)
-		storedTags[i] = tag
-	}
-
-	if restoreAll {
-		return storedRefs, storedTags, storedRoots, nil
-	}
-	srcRefs = make([]string, 0, len(specifiedTags))
-	tags = make([]string, 0, len(specifiedTags))
-	roots = make([]ocispec.Descriptor, 0, len(specifiedTags))
-	for _, tag := range specifiedTags {
-		matches := byTag[tag]
-		if len(matches) == 0 {
-			return nil, nil, nil, fmt.Errorf("failed to resolve tag %q: %w", tag, errdef.ErrNotFound)
-		}
-		for _, i := range matches {
-			srcRefs = append(srcRefs, storedRefs[i])
-			tags = append(tags, tag)
-			roots = append(roots, storedRoots[i])
+	tags = make([]string, len(srcRefs))
+	for i, ref := range srcRefs {
+		if tags[i], err = tagFromRefName(ref); err != nil {
+			return nil, nil, nil, err
 		}
 	}
 	return srcRefs, tags, roots, nil
@@ -343,6 +309,8 @@ func resolveRestoreRefs(ctx context.Context, src oras.ReadOnlyTarget, specifiedT
 func restoreTargets(target string, srcRefs []string, preserveSourceRegistry bool) ([]string, error) {
 	dstRepos := make([]string, len(srcRefs))
 	sources := make(map[string]string, len(srcRefs)) // target repository -> source repository
+	reported := make(map[string]bool)                // colliding source repositories already listed
+	var collisions []string
 	for i, srcRef := range srcRefs {
 		if isTagOnlyRefName(srcRef) {
 			if !strings.Contains(target, "/") {
@@ -361,33 +329,56 @@ func restoreTargets(target string, srcRefs []string, preserveSourceRegistry bool
 		srcRepo := ref.Registry + "/" + ref.Repository
 		dstRepo := target + "/" + ref.Repository
 		if preserveSourceRegistry {
+			if strings.Contains(ref.Registry, ":") {
+				return nil, &oerrors.Error{
+					Err:            fmt.Errorf("source registry %q of %q in the backup has a port and cannot be a repository path component", ref.Registry, srcRef),
+					Recommendation: "--preserve-source-registry does not support source registries with a port. Restore without it",
+				}
+			}
 			dstRepo = target + "/" + srcRepo
 		}
 		if _, err := properties.NewReference(dstRepo); err != nil {
 			return nil, fmt.Errorf("invalid target repository %q for %q in the backup: %w", dstRepo, srcRef, err)
 		}
 		if prev, ok := sources[dstRepo]; ok && prev != srcRepo {
-			return nil, &oerrors.Error{
-				Err:            fmt.Errorf("source repositories %q and %q both restore to %q", prev, srcRepo, dstRepo),
-				Recommendation: "Use --preserve-source-registry to keep the source registry in the target repository path",
+			if !reported[srcRepo] {
+				reported[srcRepo] = true
+				collisions = append(collisions, fmt.Sprintf("%q and %q both restore to %q", prev, srcRepo, dstRepo))
 			}
+			continue
 		}
 		sources[dstRepo] = srcRepo
 		dstRepos[i] = dstRepo
 	}
+	if len(collisions) > 0 {
+		return nil, &oerrors.Error{
+			Err:            fmt.Errorf("source repositories collide in the target: %s", strings.Join(collisions, "; ")),
+			Recommendation: "Use --preserve-source-registry to keep the source registry in the target repository path",
+		}
+	}
 	return dstRepos, nil
 }
 
-// parseRestoreTarget parses the restore target <registry>[/<namespace>][:<tag>[,<tag>...]].
+// parseRestoreTarget parses the restore target <registry>[/<namespace>].
 // A target without a path is a registry, where a ':' separates the port.
-func parseRestoreTarget(target string) (string, []string, error) {
+// Tags and digests are rejected: the target only names where artifacts go.
+func parseRestoreTarget(target string) (string, error) {
 	if !strings.Contains(target, "/") {
 		if err := (properties.Reference{Registry: target}).ValidateRegistry(); err != nil {
-			return "", nil, fmt.Errorf("invalid target %q: %w", target, err)
+			return "", fmt.Errorf("invalid target %q: %w", target, err)
 		}
-		return target, nil, nil
+		return target, nil
 	}
-	return parseArtifactReferences(target)
+	if path := target[strings.Index(target, "/")+1:]; strings.ContainsAny(path, ":@") {
+		return "", &oerrors.Error{
+			Err:            fmt.Errorf("invalid target %q: a tag or digest cannot be specified in the restore target", target),
+			Recommendation: "Specify the target as <registry>[/<namespace>]. Restore copies every artifact in the backup",
+		}
+	}
+	if _, err := properties.NewReference(target); err != nil {
+		return "", fmt.Errorf("invalid target %q: %w", target, err)
+	}
+	return target, nil
 }
 
 // isTagOnlyRefName reports whether an org.opencontainers.image.ref.name value

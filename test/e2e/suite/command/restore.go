@@ -70,7 +70,7 @@ var _ = Describe("ORAS beginners:", func() {
 		It("should fail with appropriate error when digest is provided", func() {
 			tmpDir := GinkgoT().TempDir()
 			ORAS("restore", "--input", tmpDir, "invalid/format@sha256:digest").ExpectFailure().
-				MatchErrKeyWords("Error:", "digest references are not supported").Exec()
+				MatchErrKeyWords("Error:", "a tag or digest cannot be specified in the restore target").Exec()
 		})
 
 		It("should fail with appropriate error when invalid tag format provided", func() {
@@ -82,7 +82,7 @@ var _ = Describe("ORAS beginners:", func() {
 		It("should fail with appropriate error when tag is provided with digest", func() {
 			tmpDir := GinkgoT().TempDir()
 			ORAS("restore", "--input", tmpDir, "invalid/format:v1,@sha256:123abc").ExpectFailure().
-				MatchErrKeyWords("Error:", "digest references are not supported").Exec()
+				MatchErrKeyWords("Error:", "a tag or digest cannot be specified in the restore target").Exec()
 		})
 	})
 })
@@ -101,7 +101,7 @@ var _ = Describe("ORAS users:", func() {
 			testRepo := restoreTestRepo("restore-single-tag-dir")
 			// the backup records the source repository, which is restored under the target
 			restoredRepo := testRepo + "/" + ImageRepo
-			dstRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			dstRef := fmt.Sprintf("%s/%s", ZOTHost, testRepo)
 
 			// Restore from backup directory
 			foobarStates := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(oras.MediaTypeUnknownConfig))
@@ -125,7 +125,7 @@ var _ = Describe("ORAS users:", func() {
 
 			testRepo := restoreTestRepo("restore-tag-only")
 			dstRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
-			ORAS("restore", "--input", backupDir, Flags.ExcludeReferrers, dstRef).
+			ORAS("restore", "--input", backupDir, Flags.ExcludeReferrers, fmt.Sprintf("%s/%s", ZOTHost, testRepo)).
 				MatchKeyWords("Successfully restored 1 tag(s)").
 				Exec()
 
@@ -144,7 +144,7 @@ var _ = Describe("ORAS users:", func() {
 			testRepo := restoreTestRepo("restore-with-referrers")
 			// the backup records the source repository, which is restored under the target
 			restoredRepo := testRepo + "/" + ArtifactRepo
-			dstRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			dstRef := fmt.Sprintf("%s/%s", ZOTHost, testRepo)
 
 			// Restore from backup with referrers
 			foobarStates := append(append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageReferrerConfigStateKeys[0]), foobar.ImageReferrersStateKeys...)
@@ -177,7 +177,7 @@ var _ = Describe("ORAS users:", func() {
 			testRepo := restoreTestRepo("restore-multi-arch")
 			// the backup records the source repository, which is restored under the target
 			restoredRepo := testRepo + "/" + ArtifactRepo
-			dstRef := RegistryRef(ZOTHost, testRepo, ma.Tag)
+			dstRef := fmt.Sprintf("%s/%s", ZOTHost, testRepo)
 
 			// Restore from backup directory
 			stateKeys := ma.IndexStateKeys
@@ -204,7 +204,7 @@ var _ = Describe("ORAS users:", func() {
 			testRepo := restoreTestRepo("restore-multi-arch-referrers")
 			// the backup records the source repository, which is restored under the target
 			restoredRepo := testRepo + "/" + ArtifactRepo
-			dstRef := RegistryRef(ZOTHost, testRepo, ma.Tag)
+			dstRef := fmt.Sprintf("%s/%s", ZOTHost, testRepo)
 
 			// Restore multi-arch with referrers
 			stateKeys := append(ma.IndexStateKeys, ma.IndexZOTReferrerStateKey, ma.LinuxAMD64ReferrerConfigStateKey)
@@ -239,7 +239,7 @@ var _ = Describe("ORAS users:", func() {
 			testRepo := restoreTestRepo("restore-multi-arch-child-referrers")
 			// the backup records the source repository, which is restored under the target
 			restoredRepo := testRepo + "/" + ArtifactRepo
-			dstRef := RegistryRef(ZOTHost, testRepo, tag)
+			dstRef := fmt.Sprintf("%s/%s", ZOTHost, testRepo)
 
 			// Restore from backup directory
 			stateKeys := []match.StateKey{
@@ -301,7 +301,7 @@ var _ = Describe("ORAS users:", func() {
 			testRepo := restoreTestRepo("restore-single-tag-tar")
 			// the backup records the source repository, which is restored under the target
 			restoredRepo := testRepo + "/" + ImageRepo
-			dstRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			dstRef := fmt.Sprintf("%s/%s", ZOTHost, testRepo)
 
 			// Restore from backup tar
 			foobarStates := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageConfigStateKey(oras.MediaTypeUnknownConfig))
@@ -328,7 +328,7 @@ var _ = Describe("ORAS users:", func() {
 			testRepo := restoreTestRepo("restore-with-referrers-tar")
 			// the backup records the source repository, which is restored under the target
 			restoredRepo := testRepo + "/" + ArtifactRepo
-			dstRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			dstRef := fmt.Sprintf("%s/%s", ZOTHost, testRepo)
 
 			// Restore from backup tar with referrers
 			foobarStates := append(append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageReferrerConfigStateKeys[0]), foobar.ImageReferrersStateKeys...)
@@ -361,7 +361,7 @@ var _ = Describe("ORAS users:", func() {
 			testRepo := restoreTestRepo("restore-multi-arch-tar")
 			// the backup records the source repository, which is restored under the target
 			restoredRepo := testRepo + "/" + ArtifactRepo
-			dstRef := RegistryRef(ZOTHost, testRepo, ma.Tag)
+			dstRef := fmt.Sprintf("%s/%s", ZOTHost, testRepo)
 
 			// Restore from backup tar
 			stateKeys := ma.IndexStateKeys
@@ -378,83 +378,6 @@ var _ = Describe("ORAS users:", func() {
 	})
 
 	When("restoring multiple tags", func() {
-		It("should restore multiple specified tags without referrers from a directory", func() {
-			// Create a backup with multiple tags
-			tmpDir := GinkgoT().TempDir()
-			backupDir := filepath.Join(tmpDir, "backup-multiple-tags")
-			srcTags := []string{foobar.Tag, ma.Tag}
-			srcRefs := fmt.Sprintf("%s/%s:%s", ZOTHost, ArtifactRepo, strings.Join(srcTags, ","))
-
-			ORAS("backup", "--output", backupDir, srcRefs).Exec()
-
-			// Create target repo for restore
-			testRepo := restoreTestRepo("restore-multiple-tags")
-			// the backup records the source repository, which is restored under the target
-			restoredRepo := testRepo + "/" + ArtifactRepo
-			dstRefs := fmt.Sprintf("%s/%s:%s", ZOTHost, testRepo, strings.Join(srcTags, ","))
-
-			// Restore multiple tags
-			stateKeys := append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey)
-			stateKeys = append(stateKeys, ma.IndexStateKeys...)
-
-			ORAS("restore", "--input", backupDir, Flags.ExcludeReferrers, dstRefs).
-				MatchStatus(stateKeys, true, len(stateKeys)).
-				MatchKeyWords("0 referrer(s)").
-				MatchKeyWords("Successfully restored 2 tag(s)").
-				Exec()
-
-			// Verify restored content
-			for _, tag := range srcTags {
-				CompareRef(
-					RegistryRef(ZOTHost, ArtifactRepo, tag),
-					RegistryRef(ZOTHost, restoredRepo, tag),
-				)
-			}
-		})
-
-		It("should restore multiple specified tags with referrers from a directory", func() {
-			// Create a backup with multiple tags and referrers
-			tmpDir := GinkgoT().TempDir()
-			backupDir := filepath.Join(tmpDir, "backup-multiple-tags-referrers")
-			srcTags := []string{foobar.Tag, ma.Tag}
-			srcRefs := fmt.Sprintf("%s/%s:%s", ZOTHost, ArtifactRepo, strings.Join(srcTags, ","))
-
-			ORAS("backup", "--output", backupDir, Flags.IncludeReferrers, srcRefs).Exec()
-
-			// Create target repo for restore
-			testRepo := restoreTestRepo("restore-multiple-tags-referrers")
-			// the backup records the source repository, which is restored under the target
-			restoredRepo := testRepo + "/" + ArtifactRepo
-			dstRefs := fmt.Sprintf("%s/%s:%s", ZOTHost, testRepo, strings.Join(srcTags, ","))
-
-			// Restore multiple tags with referrers
-			// foobar state keys with referrers
-			foobarStateKeys := append(append(foobar.ImageLayerStateKeys, foobar.ManifestStateKey, foobar.ImageReferrerConfigStateKeys[0]), foobar.ImageReferrersStateKeys...)
-			// ma state keys with referrers
-			maStateKeys := append(ma.IndexStateKeys, ma.IndexZOTReferrerStateKey, ma.LinuxAMD64ReferrerConfigStateKey)
-			// combined state keys
-			stateKeys := append(foobarStateKeys, maStateKeys...)
-
-			ORAS("restore", "--input", backupDir, dstRefs).
-				MatchStatus(stateKeys, true, len(stateKeys)).
-				MatchKeyWords("Successfully restored 2 tag(s)").
-				Exec()
-
-			// Verify restored content
-			for _, tag := range srcTags {
-				srcRef := RegistryRef(ZOTHost, ArtifactRepo, tag)
-				dstRef := RegistryRef(ZOTHost, restoredRepo, tag)
-
-				CompareRef(srcRef, dstRef)
-
-				// Verify referrers were restored for each tag
-				referrers := ORAS("discover", dstRef, "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
-				for referrerDgst := range strings.SplitSeq(strings.TrimSpace(string(referrers)), "\n") {
-					CompareRef(RegistryRef(ZOTHost, ArtifactRepo, referrerDgst), RegistryRef(ZOTHost, restoredRepo, referrerDgst))
-				}
-			}
-		})
-
 		It("should restore all tags without referrers when no specific tags are provided", func() {
 			// Create a backup with multiple tags
 			tmpDir := GinkgoT().TempDir()
@@ -560,7 +483,7 @@ var _ = Describe("ORAS users:", func() {
 
 			// Create target repo for restore
 			testRepo := restoreTestRepo("restore-dry-run")
-			dstRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			dstRef := fmt.Sprintf("%s/%s", ZOTHost, testRepo)
 			restoredRef := RegistryRef(ZOTHost, testRepo+"/"+ImageRepo, foobar.Tag)
 
 			ORAS("restore", "--input", backupDir, Flags.ExcludeReferrers, "--dry-run", dstRef).
@@ -585,7 +508,7 @@ var _ = Describe("ORAS users:", func() {
 
 			// Create target repo for restore
 			testRepo := restoreTestRepo("restore-dry-run-referrers")
-			dstRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			dstRef := fmt.Sprintf("%s/%s", ZOTHost, testRepo)
 			restoredRef := RegistryRef(ZOTHost, testRepo+"/"+ArtifactRepo, foobar.Tag)
 
 			ORAS("restore", "--input", backupDir, "--dry-run", dstRef).
@@ -614,7 +537,7 @@ var _ = Describe("ORAS users:", func() {
 			testRepo := restoreTestRepo("restore-concurrency")
 			// the backup records the source repository, which is restored under the target
 			restoredRepo := testRepo + "/" + ImageRepo
-			dstRef := RegistryRef(ZOTHost, testRepo, ma.Tag)
+			dstRef := fmt.Sprintf("%s/%s", ZOTHost, testRepo)
 
 			stateKeys := ma.IndexStateKeys
 			ORAS("restore", "--input", backupDir, "--concurrency", "1", dstRef).
@@ -639,7 +562,7 @@ var _ = Describe("ORAS users:", func() {
 			testRepo := restoreTestRepo("restore-referrers-api")
 			// the backup records the source repository, which is restored under the target
 			restoredRepo := testRepo + "/" + ArtifactRepo
-			dstRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
+			dstRef := fmt.Sprintf("%s/%s", ZOTHost, testRepo)
 
 			ORAS("restore", "--input", backupDir, Flags.DistributionSpec, "v1.1-referrers-api", dstRef).
 				MatchKeyWords("2 referrer(s)").
@@ -666,7 +589,7 @@ var _ = Describe("ORAS users:", func() {
 			testRepo := restoreTestRepo("restore-referrers-tag")
 			// the backup records the source repository, which is restored under the target
 			restoredRepo := testRepo + "/" + ArtifactRepo
-			dstRef := RegistryRef(FallbackHost, testRepo, foobar.Tag)
+			dstRef := fmt.Sprintf("%s/%s", FallbackHost, testRepo)
 
 			ORAS("restore", "--input", backupDir, Flags.DistributionSpec, "v1.1-referrers-tag", dstRef).
 				MatchKeyWords("2 referrer(s)").
@@ -679,6 +602,74 @@ var _ = Describe("ORAS users:", func() {
 			referrers := ORAS("discover", RegistryRef(FallbackHost, restoredRepo, foobar.Tag), "--format", "go-template={{range .referrers}}{{println .digest}}{{end}}").Exec().Out.Contents()
 			for referrerDgst := range strings.SplitSeq(strings.TrimSpace(string(referrers)), "\n") {
 				CompareRef(RegistryRef(FallbackHost, ArtifactRepo, referrerDgst), RegistryRef(FallbackHost, restoredRepo, referrerDgst))
+			}
+		})
+	})
+
+	When("restoring a backup of several repositories", func() {
+		// newMultiRepoBackup creates a backup holding the foobar image under each of the given references.
+		newMultiRepoBackup := func(name string, refs ...string) string {
+			backupDir := filepath.Join(GinkgoT().TempDir(), name)
+			srcRef := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
+			for _, ref := range refs {
+				ORAS("cp", srcRef, ref, Flags.ToLayoutPath, backupDir).Exec()
+			}
+			return backupDir
+		}
+
+		It("should restore every repository to a registry", func() {
+			ns := restoreTestRepo("multi-repo-to-registry")
+			srcRepos := []string{ns + "/a", ns + "/b"}
+			backupDir := newMultiRepoBackup("backup-multi-repo",
+				"src.example.com/"+srcRepos[0]+":"+foobar.Tag,
+				"src.example.com/"+srcRepos[1]+":"+foobar.Tag)
+
+			ORAS("restore", "--input", backupDir, Flags.ExcludeReferrers, ZOTHost).
+				MatchKeyWords("Successfully restored 2 tag(s)").
+				Exec()
+
+			// each source repository is restored under the registry, with the same tag
+			srcRef := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
+			for _, repo := range srcRepos {
+				CompareRef(srcRef, RegistryRef(ZOTHost, repo, foobar.Tag))
+			}
+		})
+
+		It("should fail before pushing when two source repositories restore to the same repository", func() {
+			testRepo := restoreTestRepo("multi-repo-collision")
+			backupDir := newMultiRepoBackup("backup-collision",
+				"a.example.com/app:"+foobar.Tag,
+				"b.example.com/app:"+foobar.Tag)
+			dstRef := fmt.Sprintf("%s/%s", ZOTHost, testRepo)
+
+			for _, dryRun := range [][]string{nil, {"--dry-run"}} {
+				args := append([]string{"restore", "--input", backupDir, Flags.ExcludeReferrers, dstRef}, dryRun...)
+				ORAS(args...).ExpectFailure().
+					MatchErrKeyWords("Error:", `"a.example.com/app" and "b.example.com/app" both restore to`, "--preserve-source-registry").
+					Exec()
+			}
+
+			// Verify nothing was pushed
+			ORAS("manifest", "fetch", RegistryRef(ZOTHost, testRepo+"/app", foobar.Tag)).
+				ExpectFailure().
+				MatchErrKeyWords("Error response from registry:", "not found").
+				Exec()
+		})
+
+		It("should keep the source registry in the repository path with --preserve-source-registry", func() {
+			testRepo := restoreTestRepo("multi-repo-preserve-source-registry")
+			backupDir := newMultiRepoBackup("backup-preserve-source-registry",
+				"a.example.com/app:"+foobar.Tag,
+				"b.example.com/app:"+foobar.Tag)
+			dstRef := fmt.Sprintf("%s/%s", ZOTHost, testRepo)
+
+			ORAS("restore", "--input", backupDir, Flags.ExcludeReferrers, "--preserve-source-registry", dstRef).
+				MatchKeyWords("Successfully restored 2 tag(s)").
+				Exec()
+
+			srcRef := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
+			for _, srcRegistry := range []string{"a.example.com", "b.example.com"} {
+				CompareRef(srcRef, RegistryRef(ZOTHost, testRepo+"/"+srcRegistry+"/app", foobar.Tag))
 			}
 		})
 	})
@@ -783,21 +774,25 @@ var _ = Describe("ORAS users:", func() {
 				Exec()
 		})
 
-		It("should fail when the specified tag doesn't exist in the backup", func() {
+		It("should fail when a tag is specified in the target", func() {
 			// Create a backup
 			tmpDir := GinkgoT().TempDir()
-			backupDir := filepath.Join(tmpDir, "backup-missing-tag")
+			backupDir := filepath.Join(tmpDir, "backup-tag-in-target")
 			srcRef := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
 
 			ORAS("backup", "--output", backupDir, srcRef).Exec()
 
-			// Create target repo for restore with a non-existent tag
-			testRepo := restoreTestRepo("restore-missing-tag")
-			dstRef := RegistryRef(ZOTHost, testRepo, "non-existent-tag")
-
-			// Attempt to restore a non-existent tag
+			// The target only names where artifacts go, so a tag in it is rejected
+			testRepo := restoreTestRepo("restore-tag-in-target")
+			dstRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)
 			ORAS("restore", "--input", backupDir, dstRef).ExpectFailure().
-				MatchErrKeyWords("Error:", "non-existent-tag").Exec()
+				MatchErrKeyWords("Error:", "a tag or digest cannot be specified in the restore target").Exec()
+
+			// Verify nothing was pushed
+			ORAS("manifest", "fetch", RegistryRef(ZOTHost, testRepo+"/"+ImageRepo, foobar.Tag)).
+				ExpectFailure().
+				MatchErrKeyWords("Error response from registry:", "not found").
+				Exec()
 		})
 
 		It("should fail when trying to restore to a non-existent registry", func() {
@@ -810,7 +805,7 @@ var _ = Describe("ORAS users:", func() {
 
 			// Try to restore to a non-existent registry
 			nonExistentRegistry := fmt.Sprintf("non-existent-repo-%d-%d.example.com", GinkgoRandomSeed(), time.Now().UnixNano())
-			dstRef := RegistryRef(nonExistentRegistry, restoreTestRepo("restore-test"), foobar.Tag)
+			dstRef := fmt.Sprintf("%s/%s", nonExistentRegistry, restoreTestRepo("restore-test"))
 
 			// Attempt to restore to a non-existent registry
 			ORAS("restore", "--input", backupDir, dstRef).ExpectFailure().
