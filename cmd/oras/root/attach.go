@@ -45,10 +45,10 @@ type attachOptions struct {
 	option.Format
 	option.Platform
 	option.Terminal
+	option.Concurrency
 
 	artifactType      string
 	manifestConfigRef string
-	concurrency       int
 	// Deprecated: verbose is deprecated and will be removed in the future.
 	verbose bool
 }
@@ -135,11 +135,11 @@ Example - Attach file 'hi.txt' reproducibly with SOURCE_DATE_EPOCH:
 
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "config", "", "", "`path` of image config file")
-	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
 	opts.FlagDescription = "attach to an arch-specific subject"
 	_ = cmd.MarkFlagRequired("artifact-type")
 	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
+	opts.Concurrency.Concurrency = 5
 	opts.EnableDistributionSpecFlag()
 	opts.SetTypes(option.FormatTypeText, option.FormatTypeJSON, option.FormatTypeGoTemplate)
 	option.ApplyFlags(&opts, cmd.Flags())
@@ -215,7 +215,7 @@ func doAttach(ctx context.Context, opts *attachOptions, store *file.Store, dst o
 		return ocispec.Descriptor{}, err
 	}
 	graphCopyOptions := oras.DefaultCopyGraphOptions
-	graphCopyOptions.Concurrency = opts.concurrency
+	graphCopyOptions.Concurrency = opts.Concurrency.Concurrency
 	graphCopyOptions.OnCopySkipped = statusHandler.OnCopySkipped
 	graphCopyOptions.PreCopy = statusHandler.PreCopy
 	graphCopyOptions.PostCopy = statusHandler.PostCopy

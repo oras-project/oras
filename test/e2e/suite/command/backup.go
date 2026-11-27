@@ -129,6 +129,17 @@ var _ = Describe("ORAS beginners:", func() {
 			ORAS("backup", "--output", outDir, "invalid/format:v1,@sha256:123abc").ExpectFailure().
 				MatchErrKeyWords("Error:", "digest references are not supported").Exec()
 		})
+
+		It("should fail if given an invalid value for concurrency", func() {
+			tmpDir := GinkgoT().TempDir()
+			outDir := filepath.Join(tmpDir, "invalid-concurrency")
+			for _, val := range []string{"0", "-1"} {
+				ORAS("backup", "--output", outDir, RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--concurrency", val).
+					ExpectFailure().
+					MatchErrKeyWords("Error:", "concurrency value should be at least 1").
+					Exec()
+			}
+		})
 	})
 })
 

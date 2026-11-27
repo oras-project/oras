@@ -45,12 +45,12 @@ type restoreOptions struct {
 	option.Common
 	option.Remote
 	option.Terminal
+	option.Concurrency
 
 	// flags
 	input                  string
 	excludeReferrers       bool
 	dryRun                 bool
-	concurrency            int
 	preserveSourceRegistry bool
 
 	// derived options
@@ -126,8 +126,8 @@ Example - Set custom concurrency level:
 	// optional flags
 	cmd.Flags().BoolVar(&opts.excludeReferrers, "exclude-referrers", false, "restore artifacts excluding their referrers")
 	cmd.Flags().BoolVar(&opts.dryRun, "dry-run", false, "simulate the restore process without actually uploading any artifacts")
-	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 	cmd.Flags().BoolVar(&opts.preserveSourceRegistry, "preserve-source-registry", false, "keep the source registry as the first path component of each target repository; source registries with a port are not supported")
+	opts.Concurrency.Concurrency = 5
 	opts.EnableDistributionSpecFlag()
 	// apply flags
 	option.ApplyFlags(&opts, cmd.Flags())
@@ -210,7 +210,7 @@ func doRestore(
 
 	// prepare copy options
 	copyOpts := oras.DefaultCopyOptions
-	copyOpts.Concurrency = opts.concurrency
+	copyOpts.Concurrency = opts.Concurrency.Concurrency
 	copyOpts.PreCopy = statusHandler.PreCopy
 	copyOpts.PostCopy = statusHandler.PostCopy
 	copyOpts.OnCopySkipped = statusHandler.OnCopySkipped

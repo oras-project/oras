@@ -120,6 +120,16 @@ var _ = Describe("ORAS beginners:", func() {
 			ORAS("push", ref, "--artifact-platform", "linux/amd64", "--config", foobar.FileConfigName).ExpectFailure().WithWorkDir(tempDir).Exec()
 		})
 
+		It("should fail if given an invalid value for concurrency", func() {
+			subjectRef := RegistryRef(ZOTHost, pushTestRepo("invalid-concurrency"), foobar.Tag)
+			for _, val := range []string{"0", "-1"} {
+				ORAS("push", subjectRef, "--concurrency", val).
+					ExpectFailure().
+					MatchErrKeyWords("Error:", "concurrency value should be at least 1").
+					Exec()
+			}
+		})
+
 		It("should fail if image spec is not valid", func() {
 			testRepo := attachTestRepo("invalid-image-spec")
 			subjectRef := RegistryRef(ZOTHost, testRepo, foobar.Tag)

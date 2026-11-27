@@ -129,6 +129,16 @@ var _ = Describe("ORAS beginners:", func() {
 				Exec()
 		})
 
+		It("should fail if given an invalid value for concurrency", func() {
+			ref := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
+			for _, val := range []string{"0", "-1"} {
+				ORAS("pull", ref, "--concurrency", val).
+					ExpectFailure().
+					MatchErrKeyWords("Error:", "concurrency value should be at least 1").
+					Exec()
+			}
+		})
+
 		It("should fail if template format is invalid", func() {
 			tempDir := PrepareTempFiles()
 			invalidPrompt := "invalid format type"

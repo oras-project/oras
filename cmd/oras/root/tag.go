@@ -37,9 +37,9 @@ import (
 type tagOptions struct {
 	option.Common
 	option.Target
+	option.Concurrency
 
-	concurrency int
-	targetRefs  []string
+	targetRefs []string
 }
 
 func tagCmd() *cobra.Command {
@@ -97,8 +97,8 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'l
 		},
 	}
 
+	opts.Concurrency.Concurrency = 5
 	option.ApplyFlags(&opts, cmd.Flags())
-	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 	option.AddDeprecatedVerboseFlag(cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
 }
@@ -117,7 +117,7 @@ func tagManifest(cmd *cobra.Command, opts *tagOptions) error {
 	}
 
 	tagNOpts := oras.DefaultTagNOptions
-	tagNOpts.Concurrency = opts.concurrency
+	tagNOpts.Concurrency = opts.Concurrency.Concurrency
 	tagHandler := display.NewTagHandler(opts.Printer, opts.Target)
 	// Validate extra tags only when ExtraTagTarget will prefix them onto a
 	// repository. --oci-layout (and a bare --oci-layout-path reference) still

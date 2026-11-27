@@ -117,6 +117,15 @@ var _ = Describe("ORAS beginners:", func() {
 					ExpectFailure().
 					MatchErrKeyWords("`-`", "`--identity-token-stdin`", " cannot be both used").Exec()
 			})
+
+			It("should fail if given an invalid value for concurrency", func() {
+				for _, val := range []string{"0", "-1"} {
+					ORAS("manifest", "push", RegistryRef(ZOTHost, ImageRepo, "invalid-concurrency"), "manifest.json", "--concurrency", val).
+						ExpectFailure().
+						MatchErrKeyWords("Error:", "concurrency value should be at least 1").
+						Exec()
+				}
+			})
 		})
 
 		When("running `manifest fetch`", func() {

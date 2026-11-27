@@ -56,6 +56,21 @@ func Test_pushManifestCmd_invalidHeader(t *testing.T) {
 	}
 }
 
+func Test_pushManifestCmd_invalidConcurrency(t *testing.T) {
+	for _, val := range []string{"0", "-1"} {
+		cmd := pushCmd()
+		cmd.SetArgs([]string{
+			"--concurrency", val,
+			"localhost:5000/hello:v1",
+			"manifest.json",
+		})
+		err := cmd.Execute()
+		if err == nil || err.Error() != "concurrency value should be at least 1" {
+			t.Fatalf("--concurrency %s: got %v, want concurrency validation error", val, err)
+		}
+	}
+}
+
 func TestPushManifestToTarget_handlerCallOrderAndError(t *testing.T) {
 	ctx := context.Background()
 	target := memory.New()

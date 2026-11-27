@@ -61,11 +61,11 @@ type copyOptions struct {
 	option.Platforms
 	option.BinaryTarget
 	option.Terminal
+	option.Concurrency
 
-	recursive   bool
-	force       bool
-	concurrency int
-	extraRefs   []string
+	recursive bool
+	force     bool
+	extraRefs []string
 	// Deprecated: verbose is deprecated and will be removed in the future.
 	verbose bool
 }
@@ -135,9 +135,9 @@ Example - Copy a multi-arch image to a destination that may be partially populat
 	}
 	cmd.Flags().BoolVarP(&opts.recursive, "recursive", "r", false, "[Preview] recursively copy the artifact and its referrer artifacts")
 	cmd.Flags().BoolVarP(&opts.force, "force", "", false, "force a deep traversal of the destination graph before tagging the root; useful when the destination is partially populated (e.g. by a registry cache)")
-	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
 	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
+	opts.Concurrency.Concurrency = 3
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.BinaryTarget)
@@ -190,7 +190,7 @@ func copyAndFinalize(ctx context.Context, statusHandler status.CopyHandler, meta
 
 	if len(opts.extraRefs) != 0 {
 		tagNOpts := oras.DefaultTagNOptions
-		tagNOpts.Concurrency = opts.concurrency
+		tagNOpts.Concurrency = opts.Concurrency.Concurrency
 		tagListener := listener.NewTaggedListener(opts.To.ExtraTagTarget(dst), metadataHandler.OnTagged)
 		// Without a destination tag the content was copied untagged, so tag it by digest.
 		srcReference := opts.To.Reference
@@ -593,7 +593,7 @@ func platformMatches(manifestPlatform, targetPlatform *ocispec.Platform) bool {
 func doCopy(ctx context.Context, copyHandler status.CopyHandler, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions) (desc ocispec.Descriptor, err error) {
 	// Prepare copy options
 	extendedCopyGraphOptions := oras.DefaultExtendedCopyGraphOptions
-	extendedCopyGraphOptions.Concurrency = opts.concurrency
+	extendedCopyGraphOptions.Concurrency = opts.Concurrency.Concurrency
 	extendedCopyGraphOptions.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		return registry.Referrers(ctx, src, desc, "")
 	}

@@ -397,4 +397,16 @@ func TestRecursiveFindReferrers(t *testing.T) {
 			t.Errorf("expected error %v, got %v", testErr, err)
 		}
 	})
+
+	t.Run("negative concurrency ignored in FindPredecessors", func(t *testing.T) {
+		opts := oras.DefaultExtendedCopyGraphOptions
+		opts.Concurrency = -1
+		gotReferrers, err := RecursiveFindReferrers(ctx, target, []ocispec.Descriptor{manifestDesc1}, opts)
+		if err != nil {
+			t.Fatalf("RecursiveFindReferrers unexpected error: %v", err)
+		}
+		if len(gotReferrers) != 2 {
+			t.Fatalf("RecursiveFindReferrers got %d referrers, want 2", len(gotReferrers))
+		}
+	})
 }
