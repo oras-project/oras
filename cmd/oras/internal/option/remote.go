@@ -398,6 +398,22 @@ func normalizeCredentialHost(registry string) string {
 	return (properties.Resource{Registry: strings.ToLower(registry)}).Host()
 }
 
+// sameCredentialHost reports whether a challenged resource host is the target
+// registry. A missing port denotes the scheme's default, so example.com and
+// example.com:443 match under https, and reg and reg:80 match under plain HTTP.
+func sameCredentialHost(resourceRegistry, registry string, plainHTTP bool) bool {
+	defaultPort := "443"
+	if plainHTTP {
+		defaultPort = "80"
+	}
+	resourceHost, resourcePort := splitAuthority(resourceRegistry, defaultPort)
+	registryHost, registryPort := splitAuthority(registry, defaultPort)
+	resourceHost = normalizeCredentialHost(resourceHost)
+	registryHost = normalizeCredentialHost(registryHost)
+	return resourceHost != "" && registryHost != "" &&
+		sameHost(resourceHost, registryHost) && resourcePort == registryPort
+}
+
 // authClient assembles a oras auth client.
 func (remo *Remote) authClient(registry string, plainHTTP, debug bool) (client *auth.Client, err error) {
 	return remo.authClientWithProperties(registry, plainHTTP, debug, nil, nil)
@@ -528,9 +544,8 @@ func (remo *Remote) authClientWithProperties(registry string, plainHTTP, debug b
 		}
 		client.CredentialFunc = storeCredFunc
 	} else {
-		targetHost := normalizeCredentialHost(registry)
 		client.CredentialFunc = func(ctx context.Context, resource properties.Resource) (credentials.Credential, error) {
-			if targetHost != "" && strings.EqualFold(normalizeCredentialHost(resource.Registry), targetHost) {
+			if sameCredentialHost(resource.Registry, registry, plainHTTP) {
 				return cred, nil
 			}
 			if storeErr != nil {

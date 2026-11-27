@@ -971,6 +971,86 @@ func TestSameRegistryOrigin(t *testing.T) {
 	}
 }
 
+func TestSameCredentialHost(t *testing.T) {
+	tests := []struct {
+		name             string
+		resourceRegistry string
+		registry         string
+		plainHTTP        bool
+		want             bool
+	}{
+		{"implicit HTTPS port on registry", "example.com:443", "example.com", false, true},
+		{"implicit HTTPS port on resource", "example.com", "example.com:443", false, true},
+		{"implicit HTTP port on registry", "reg:80", "reg", true, true},
+		{"implicit HTTP port on resource", "reg", "reg:80", true, true},
+		{"non-default port", "example.com:5000", "example.com", false, false},
+		{"HTTPS default port under HTTP", "reg:443", "reg", true, false},
+		{"case-insensitive host", "EXAMPLE.COM:443", "example.com", false, true},
+		{"Docker Hub alias", "registry-1.docker.io:443", "docker.io", false, true},
+		{"Docker Hub alias in reverse", "docker.io", "registry-1.docker.io:443", false, true},
+		{"IPv6 implicit HTTPS port", "[::1]:443", "::1", false, true},
+		{"different host", "example.com:443", "other.example", false, false},
+		{"empty registry", "example.com:443", "", false, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := sameCredentialHost(tt.resourceRegistry, tt.registry, tt.plainHTTP); got != tt.want {
+				t.Fatalf("sameCredentialHost() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRemote_authClient_StaticCredentialDefaultPort(t *testing.T) {
+	const (
+		cliUser = "cli-user"
+		cliPass = "cli-pass"
+	)
+	configPath := writeTestAuthConfig(t, map[string]credentials.Credential{})
+	wantCred := credentials.Credential{Username: cliUser, Password: cliPass}
+
+	tests := []struct {
+		name             string
+		registry         string
+		resourceRegistry string
+		plainHTTP        bool
+		want             bool
+	}{
+		{"HTTPS default port", "example.com", "example.com:443", false, true},
+		{"HTTPS default port on both sides", "example.com", "example.com", false, true},
+		{"HTTP default port", "reg", "reg:80", true, true},
+		{"non-default port stays in the store", "example.com", "example.com:5000", false, false},
+		{"HTTPS default port under HTTP stays in the store", "reg", "reg:443", true, false},
+		{"Docker Hub alias", "docker.io", "registry-1.docker.io:443", false, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := Remote{
+				Username: cliUser,
+				Secret:   cliPass,
+				Configs:  []string{configPath},
+			}
+			client, err := opts.authClient(tt.registry, tt.plainHTTP, false)
+			if err != nil {
+				t.Fatalf("authClient() error = %v", err)
+			}
+			got, err := client.CredentialFunc(t.Context(), properties.Resource{Registry: tt.resourceRegistry})
+			if err != nil {
+				t.Fatalf("CredentialFunc() error = %v", err)
+			}
+			if tt.want {
+				if got != wantCred {
+					t.Fatalf("CredentialFunc() = %+v, want %+v", got, wantCred)
+				}
+				return
+			}
+			if got != credentials.EmptyCredential {
+				t.Fatalf("CredentialFunc() = %+v, want empty credential", got)
+			}
+		})
+	}
+}
+
 func TestRemoteNewRegistryScopesClientCertificateToEffectiveHost(t *testing.T) {
 	tempDir := t.TempDir()
 	clientCertPath := filepath.Join(tempDir, "oras-test-client.pem")
