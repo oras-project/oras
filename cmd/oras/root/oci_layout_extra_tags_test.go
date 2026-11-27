@@ -20,6 +20,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/oras-project/oras-go/v3/content/oci"
@@ -202,5 +203,44 @@ func TestOCILayoutPathTag(t *testing.T) {
 	run("tag", "--oci-layout-path", layout, "bare", "bare-alias")
 	if got, want := mustResolve("bare-alias"), mustResolve("bare"); got != want {
 		t.Errorf("bare-alias resolves to %s, want %s", got, want)
+	}
+}
+
+func TestOCILayoutPathTagRejectsInvalidTags(t *testing.T) {
+	ctx := t.Context()
+	dir := t.TempDir()
+	layout := filepath.Join(dir, "layout")
+	input := filepath.Join(dir, "app.txt")
+	app := "localhost:5000/team/app"
+
+	if err := os.WriteFile(input, []byte("artifact"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	cmd := New()
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetArgs([]string{"push", "--oci-layout-path", layout, "--disable-path-validation", app + ":v1", input})
+	if err := cmd.ExecuteContext(ctx); err != nil {
+		t.Fatalf("push: %v", err)
+	}
+
+	var out bytes.Buffer
+	tagCmd := New()
+	tagCmd.SetOut(&out)
+	tagCmd.SetArgs([]string{"tag", "--oci-layout-path", layout, app + ":v1", "example.com/x:y"})
+	err := tagCmd.ExecuteContext(ctx)
+	if err == nil {
+		t.Fatal("tag accepted example.com/x:y, want validation error")
+	}
+	if !strings.Contains(err.Error(), "invalid extra tag") {
+		t.Fatalf("tag error = %v, want invalid extra tag", err)
+	}
+
+	store, err := oci.New(layout)
+	if err != nil {
+		t.Fatal(err)
+	}
+	malformed := app + ":example.com/x:y"
+	if _, err := store.Resolve(ctx, malformed); !errors.Is(err, errdef.ErrNotFound) {
+		t.Fatalf("resolve %q = %v, want %v", malformed, err, errdef.ErrNotFound)
 	}
 }
