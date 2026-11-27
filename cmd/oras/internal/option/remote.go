@@ -386,6 +386,13 @@ func splitAuthority(authority, defaultPort string) (host, port string) {
 	return strings.Trim(authority, "[]"), defaultPort
 }
 
+// normalizeCredentialHost returns the canonical registry host name used to
+// scope credentials: host names are lower-cased and "docker.io" is mapped to
+// "registry-1.docker.io".
+func normalizeCredentialHost(registry string) string {
+	return (properties.Resource{Registry: strings.ToLower(registry)}).Host()
+}
+
 // authClient assembles a oras auth client.
 func (remo *Remote) authClient(registry string, plainHTTP, debug bool) (client *auth.Client, err error) {
 	return remo.authClientWithProperties(registry, plainHTTP, debug, nil, nil)
@@ -501,19 +508,31 @@ func (remo *Remote) authClientWithProperties(registry string, plainHTTP, debug b
 		client.BlockedRealmPrefixes = slices.Clone(props.Attributes.BlockedRealmPrefixes)
 	}
 
-	if !cred.IsEmpty() {
-		client.CredentialFunc = func(_ context.Context, _ properties.Resource) (credentials.Credential, error) {
-			return cred, nil
-		}
-	} else {
-		store, err := remo.credentialStore()
-		if err != nil {
-			return nil, err
-		}
+	store, storeErr := remo.credentialStore()
+	var storeCredFunc credentials.CredentialFunc
+	if storeErr == nil {
 		if fallbackStore != nil {
 			store = credentials.NewStoreWithFallbacks(store, fallbackStore)
 		}
-		client.CredentialFunc = remote.NewCredentialFunc(store)
+		storeCredFunc = remote.NewCredentialFunc(store)
+	}
+
+	if cred.IsEmpty() {
+		if storeErr != nil {
+			return nil, storeErr
+		}
+		client.CredentialFunc = storeCredFunc
+	} else {
+		targetHost := normalizeCredentialHost(registry)
+		client.CredentialFunc = func(ctx context.Context, resource properties.Resource) (credentials.Credential, error) {
+			if targetHost != "" && strings.EqualFold(normalizeCredentialHost(resource.Registry), targetHost) {
+				return cred, nil
+			}
+			if storeErr != nil {
+				return credentials.EmptyCredential, storeErr
+			}
+			return storeCredFunc(ctx, resource)
+		}
 	}
 
 	return
