@@ -26,6 +26,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
@@ -436,5 +437,60 @@ func TestRemote_tlsConfig_transportCACert(t *testing.T) {
 	}
 	if config.RootCAs == nil {
 		t.Error("RootCAs = nil, want the CA certificate")
+	}
+}
+
+// With the containers configuration, the source and the destination of one
+// oras cp invocation must share the auth cache when they use the same
+// credential, as they do without it.
+func TestRemote_containersConfigSharesAuthCache(t *testing.T) {
+	useContainersConfig(t, "")
+	var unauthenticated atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, _, ok := r.BasicAuth(); !ok {
+			unauthenticated.Add(1)
+			w.Header().Set("WWW-Authenticate", `Basic realm="test"`)
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"tags":["tag"]}`))
+	}))
+	defer server.Close()
+	u, err := url.Parse(server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reference := "localhost:" + u.Port() + "/repo"
+
+	common := Common{authCaches: newAuthCacheStore()}
+	listTags := func(opts Remote) {
+		t.Helper()
+		opts.plainHTTP = plainHTTPNotSpecified
+		repo, err := opts.NewRepository(reference, common, logrus.New())
+		if err != nil {
+			t.Fatalf("NewRepository() error = %v", err)
+		}
+		if err := repo.Tags(context.Background(), "", func([]string) error { return nil }); err != nil {
+			t.Fatalf("Tags() error = %v", err)
+		}
+	}
+
+	listTags(Remote{Username: "user", Secret: "password"})
+	listTags(Remote{Username: "user", Secret: "password"})
+	if got := unauthenticated.Load(); got != 1 {
+		t.Errorf("unauthenticated requests = %d, want 1: the second client should reuse the auth cache", got)
+	}
+	listTags(Remote{Username: "other", Secret: "password"})
+	if got := unauthenticated.Load(); got != 2 {
+		t.Errorf("unauthenticated requests = %d, want 2: another credential must not reuse the auth cache", got)
+	}
+
+	opts := Remote{Username: "user", Secret: "password", plainHTTP: plainHTTPNotSpecified}
+	if _, err := opts.NewRegistry("localhost:"+u.Port(), common, logrus.New()); err != nil {
+		t.Fatalf("NewRegistry() error = %v", err)
+	}
+	if opts.authCaches != common.authCaches {
+		t.Error("NewRegistry did not bind the invocation's auth cache")
 	}
 }
