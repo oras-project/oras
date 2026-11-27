@@ -583,6 +583,9 @@ func (remo *Remote) NewRegistry(registry string, common Common, logger logrus.Fi
 	if err = repository.RejectScheme(registry); err != nil {
 		return nil, err
 	}
+	// Bind the invocation's auth cache before either path builds a client,
+	// so that clients with the same credential share it.
+	remo.ensureAuthCaches(common)
 	if containersConfigEnabled() {
 		return remo.newConfiguredRegistry(registry, common, logger)
 	}
@@ -593,7 +596,6 @@ func (remo *Remote) NewRegistry(registry string, common Common, logger logrus.Fi
 	registry = reg.Reference.Registry
 	reg.PlainHTTP = remo.isPlainHTTP(registry)
 	reg.HandleWarning = remo.warningHandler(registry, logger)
-	remo.ensureAuthCaches(common)
 	if reg.Client, err = remo.authClient(reg.Reference.Host(), reg.PlainHTTP, common.Debug); err != nil {
 		return nil, err
 	}
@@ -605,6 +607,9 @@ func (remo *Remote) NewRepository(reference string, common Common, logger logrus
 	if err = repository.RejectScheme(reference); err != nil {
 		return nil, err
 	}
+	// Bind the invocation's auth cache before either path builds a client,
+	// so that clients with the same credential share it.
+	remo.ensureAuthCaches(common)
 	if containersConfigEnabled() {
 		return remo.newConfiguredRepository(reference, common, logger)
 	}
@@ -618,7 +623,6 @@ func (remo *Remote) NewRepository(reference string, common Common, logger logrus
 	registry := repo.Registry.Reference.Registry
 	repo.Registry.PlainHTTP = remo.isPlainHTTP(registry)
 	repo.Registry.HandleWarning = remo.warningHandler(registry, logger)
-	remo.ensureAuthCaches(common)
 	if repo.Registry.Client, err = remo.authClient(repo.Reference().Host(), repo.Registry.PlainHTTP, common.Debug); err != nil {
 		return nil, err
 	}
