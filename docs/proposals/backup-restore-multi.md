@@ -257,9 +257,11 @@ oras restore --input base-images.tar \
 
 **Pattern syntax:** `[<registry>/]<repository>[:<tag>]`
 
-- A pattern matches a stored reference `<registry>/<repository>:<tag>` either in full or without its registry, so the registry is optional
-- Without `:<tag>`, every tag of the matching repositories is selected
-- `*` matches any sequence of characters, including `/`
+- A pattern is split into a repository part and a tag part at the last `:` that comes after the last `/`. A `:` before the last `/` belongs to a registry port, so `registry.lan:5000/app` has no tag part and `registry.lan:5000/app:v1` has the tag part `v1`
+- The repository part matches a stored `<registry>/<repository>` either in full or without its registry, so the registry is optional
+- The tag part matches the stored tag. Without a tag part, every tag of the matching repositories is selected
+- `*` matches any sequence of characters, including `/`, within the part it appears in. Because the parts are split first, `*` never crosses from the repository into the tag: `library/alpine*` matches `library/alpine` and `library/alpine-edge`, with all their tags, and `library/alpine:3.*` matches tags of `library/alpine` starting with `3.`
+- Patterns are compared literally against the stored references. Docker Hub short names are not expanded, so `alpine` does not match `docker.io/library/alpine`; use `library/alpine`. When a pattern matches nothing, the error lists stored repositories whose last path component equals the pattern's, e.g. "did you mean `library/alpine`?"
 
 | Pattern | Selects |
 |---|---|
@@ -268,13 +270,15 @@ oras restore --input base-images.tar \
 | `library/alpine:3.19.0` | one tag |
 | `*:v1` | tag `v1` in every repository |
 | `library/*` | every repository under `library/` |
+| `library/alpine:3.*` | tags of `library/alpine` starting with `3.` |
+| `registry.lan:5000/app` | every tag of `app` from `registry.lan:5000` |
 
 **Behavior:**
 - `--include` can be repeated; an artifact is restored if it matches any pattern
 - A pattern that matches nothing fails before anything is pushed, so typos are not silently ignored
 - Selected artifacts are mapped exactly as in Mode 1: repository paths are **preserved** under the target (e.g., `docker.io/library/alpine` → `registry.mycompany.com/library/alpine`), and `--preserve-source-registry` applies
 - If a pattern selects the same path under more than one source registry (e.g., `docker.io/library/nginx` and `mirror.gcr.io/library/nginx`), the usual [collision check](#collisions) applies. Add the registry to the pattern, use `--preserve-source-registry`, or use a rules file (Mode 3)
-- Tag-only entries from backups created by earlier versions have no repository, so only the tag part of a pattern applies to them (e.g., `*:v1`)
+- Tag-only entries from backups created by earlier versions have no recorded registry or repository. Only patterns whose repository part is exactly `*` match them, with the tag part applied as usual (e.g., `*:v1`, or `*` for every tag). A pattern that names a repository, such as `library/alpine:v1`, never matches a tag-only entry, so it cannot select tags from an unrelated repository; if it matches nothing else, it fails as an unmatched pattern
 - `--include` cannot be combined with `--rules`, whose mappings select their own sources and tags
 - An `--exclude` flag with the same syntax may be added later
 
@@ -459,7 +463,7 @@ Registry: registry.mycompany.com
 No changes were made. Remove --dry-run to perform actual restore.
 ```
 
-Dry-run also reports [collisions](#collisions), so a mapping can be checked before any push.
+Dry-run also reports [collisions](#collisions), [tag conflicts](#rules-file-format) from rules files, invalid target names and unmatched `--include` patterns, so a mapping can be checked before any push. Dry-run runs every check that a real restore runs before pushing, and exits with an error if any of them fails.
 
 ## Inspecting Backup Contents
 
@@ -603,7 +607,7 @@ The value is not limited in length by the OCI Image Spec. In practice it is boun
 `oras restore` parses each `org.opencontainers.image.ref.name` value with the ORAS reference parser:
 
 - **Full reference** (all backups created by this version, e.g., `"docker.io/library/alpine:latest"`): The registry, repository and tag are extracted. The registry and repository identify the source for mapping; the tag is used as the destination tag.
-- **Tag-only** (backups created by earlier versions, e.g., `"latest"`): Treated as a tag in a single repository with no recorded source. There is no repository path to keep, so the positional argument is the target repository, as today.
+- **Tag-only** (backups created by earlier versions, e.g., `"latest"`): Treated as a tag in a single repository with no recorded source. There is no repository path to keep, so the positional argument is the target repository, as today. Because a tag-only entry has no repository, the target must include one: `oras restore --input old-backup.tar target.com` fails before anything is pushed with an error asking for a target repository such as `target.com/myrepo`.
 
 **Example:**
 ```bash
@@ -754,6 +758,7 @@ Other validation errors, all raised before any artifact is copied:
 - **Tag conflicts**: two sources write the same tag to the same target repository
 - **Tag or digest in the restore target**: the positional argument must be `<target-registry>[/<namespace>]`; use `--include` to select tags
 - **Unmatched patterns**: an `--include` pattern that matches nothing in the backup
+- **Missing target repository**: a backup created by an earlier version (tag-only `ref.name`) restored to a bare registry such as `target.com`
 - **Conflicting options**: `--preserve-source-registry` or `--include` used together with `--rules`
 
 ## Authentication Handling
@@ -813,9 +818,11 @@ oras backup --output migration.tar \
   docker.io/library/busybox:1.36.1 \
   docker.io/library/alpine:3.19.0
 
-# Step 2: Restore to private registry
+# Step 2: Restore to private registry, under the base-images namespace
 oras restore --input migration.tar \
   registry.mycompany.com/base-images
+# docker.io/library/busybox:1.36.1 → registry.mycompany.com/base-images/library/busybox:1.36.1
+# docker.io/library/alpine:3.19.0  → registry.mycompany.com/base-images/library/alpine:3.19.0
 ```
 
 ### Use Case 2: Multi-Environment Promotion
@@ -949,9 +956,12 @@ oras backup --output application-stack.tar \
 
 # Transfer application-stack.tar via secure channel
 
-# On air-gapped system: Restore to internal registry
+# On air-gapped system: Restore to internal registry, under the production namespace
 oras restore --input application-stack.tar \
   airgap.internal.company/production
+# registry.mycompany.com/apps/frontend:v2.0 → airgap.internal.company/production/apps/frontend:v2.0
+# registry.mycompany.com/apps/backend:v2.0  → airgap.internal.company/production/apps/backend:v2.0
+# registry.mycompany.com/apps/database:v2.0 → airgap.internal.company/production/apps/database:v2.0
 ```
 
 **For dependencies from multiple registries:**
@@ -1029,7 +1039,7 @@ oras restore --input backup.tar --include '*:v1' --include '*:v2' target.com/rep
 **Backup format:** `oras backup` and `oras restore` are experimental, and this proposal changes the backup format without an opt-in flag:
 
 - **New backups, new client**: Supported.
-- **Old (tag-only) backups, new client**: Supported. Restore treats a tag-only `ref.name` as a tag and requires an explicit target repository, as today. Tags are selected with `--include` (e.g., `--include '*:v1'`) rather than a `:tag` suffix on the target.
+- **Old (tag-only) backups, new client**: Supported. Restore treats a tag-only `ref.name` as a tag and requires an explicit target repository, as today; a bare registry target is rejected. Tags are selected with `--include` (e.g., `--include '*:v1'`) rather than a `:tag` suffix on the target.
 - **New backups, old client**: Not supported. Earlier versions use the `ref.name` value directly as the destination tag, which fails for a full reference. Users must upgrade the client that restores.
 - **Other ORAS commands on new backups**: Address artifacts with `--oci-layout-path <path> <full-reference>`; `--oci-layout <path>:<tag>` no longer resolves (see [Inspecting Backup Contents](#inspecting-backup-contents)).
 
