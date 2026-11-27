@@ -158,7 +158,7 @@ Example - Set custom concurrency level:
 	// optional flags
 	cmd.Flags().BoolVarP(&opts.includeReferrers, "include-referrers", "", false, "back up the artifact with its referrers (e.g., attestations, SBOMs)")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
-	opts.Platforms.FlagDescription = "back up only the manifest matching the platform"
+	opts.FlagDescription = "back up only the manifest matching the platform"
 	opts.EnableDistributionSpecFlag()
 	// apply flags
 	option.ApplyFlags(&opts, cmd.Flags())

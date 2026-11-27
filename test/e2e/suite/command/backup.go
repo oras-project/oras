@@ -416,7 +416,7 @@ var _ = Describe("ORAS users:", func() {
 	})
 
 	When("backing up with --platform", func() {
-		maArm64Digest := "sha256:4f93460061882467e6fb3b772dc6ab72130d9ac1906aed2fc7589a5cd145433c"
+		maArm64Digest := ma.LinuxARM64.Digest.String()
 
 		It("should back up only the matching manifest of a multi-arch artifact", func() {
 			outDir := filepath.Join(GinkgoT().TempDir(), "backup-platform")
