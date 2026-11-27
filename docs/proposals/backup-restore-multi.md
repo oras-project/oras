@@ -13,16 +13,13 @@ Multi-repository support addresses enterprise scenarios where users need to:
 
 Every backup records the full reference (`<registry>/<repository>:<tag>`) of each artifact, so a backup always says where its contents came from. See [Backup Format and Annotations](#backup-format-and-annotations).
 
-> [!NOTE]
-> Backing up from multiple registries in a single operation depends on oras-go support for working with several registries in one command. See [Dependencies](#dependencies).
-
 **Out of Scope:** Backing up an entire registry (all repositories) is not supported. For registry-wide backup and replication, use registry-native features (e.g., Harbor replication, ACR geo-replication) or vendor-specific backup tools. Multi-repository backup should be used for intentional, bounded operations where users specify exactly which repositories to backup.
 
-This proposal keeps existing `oras backup` command lines working and keeps earlier backups restorable, while introducing intuitive, human-centric syntax for multi-repository workflows. `oras restore` changes how its target argument is interpreted (see [Backward Compatibility](#backward-compatibility)).
+This proposal keeps existing `oras backup` command lines working, except those that use a removed registry flag, and keeps earlier backups restorable, while introducing intuitive, human-centric syntax for multi-repository workflows. `oras restore` changes how its target argument is interpreted (see [Backward Compatibility](#backward-compatibility)).
 
 ## Design Principles
 
-1. **Backward Compatibility**: Existing `oras backup` command lines continue to work, and backups created by earlier versions can still be restored (see [Backward Compatibility](#backward-compatibility))
+1. **Backward Compatibility**: Existing `oras backup` command lines continue to work unless they use a removed registry flag (see [Removed Flags](#removed-flags)), and backups created by earlier versions can still be restored (see [Backward Compatibility](#backward-compatibility))
 2. **Progressive Disclosure**: Simple cases remain simple; complexity is introduced only when needed
 3. **Consistency**: Multi-repository syntax follows established patterns from single-repository design
 4. **Flexibility**: Support for repository mapping and restructuring during restore
@@ -392,6 +389,14 @@ oras restore --input app-deps.tar --preserve-source-registry airgap.internal.com
 - `docker.io/library/nginx` → `airgap.internal.company/docker.io/library/nginx`
 - `ghcr.io/oras-project/oras` → `airgap.internal.company/ghcr.io/oras-project/oras`
 
+The source host is turned into a valid repository path component:
+
+- The host is lowercased, since host names are case-insensitive but repository names must be lowercase.
+- A port separator `:` is replaced by `_`, e.g. `registry.lan:5000/app` → `airgap.internal.company/registry.lan_5000/app`. Host names cannot contain `_`, so this cannot collide with another host.
+- An IPv6 literal host (e.g. `[::1]:5000`) cannot be encoded and fails before anything is pushed; use a rules file (Mode 3) for those repositories.
+
+The resulting target repository, including any namespace and the encoded host, must stay within the distribution-spec limit of 255 characters; a longer name fails before anything is pushed.
+
 The flag applies to Mode 1 and Mode 2. It cannot be combined with `--rules`, where targets are given in full.
 
 ### Selective Tag Restoration
@@ -522,7 +527,9 @@ oras discover --oci-layout-path base-images.tar docker.io/library/busybox:1.36.1
 This proposal depends on the following:
 
 - **[#1770](https://github.com/oras-project/oras/issues/1770)**: Support `oras repo ls --oci-layout-path` for listing repositories in OCI Image Layout backups.
-- **oras-go**: Support for working with repositories on several registries within one command, each with its own credentials. Multi-registry backup cannot ship until this is available. (Issue to be linked.)
+- **[#2380](https://github.com/oras-project/oras/issues/2380)**: Remove the global registry flags from `oras backup` and `oras restore`, and provide the per-registry replacements listed in [Prerequisites](#prerequisites).
+
+No oras-go change is needed for multi-registry backup. oras-go already resolves credentials per host (`auth.CredentialFunc` takes the `hostport`, and the credential store is keyed by host), so one command can talk to several registries, each with its own credentials. The single-registry limit came from the CLI applying one set of registry flags to every reference, which #2380 removes.
 
 ## Backup Format and Annotations
 
@@ -743,6 +750,7 @@ Other validation errors, all raised before any artifact is copied:
 
 - **Removed registry flags**: any of the flags listed in [Removed Flags](#removed-flags), with an error that names the per-registry replacement
 - **Target collisions**: two source repositories map to the same target repository (see [Collisions](#collisions))
+- **Invalid target names**: a target repository that is not a valid repository name or is longer than 255 characters, including an IPv6 source host with `--preserve-source-registry` (see [Keeping the Source Registry in the Target Path](#keeping-the-source-registry-in-the-target-path))
 - **Tag conflicts**: two sources write the same tag to the same target repository
 - **Tag or digest in the restore target**: the positional argument must be `<target-registry>[/<namespace>]`; use `--include` to select tags
 - **Unmatched patterns**: an `--include` pattern that matches nothing in the backup
@@ -988,7 +996,7 @@ The global credential, TLS, header and distribution-spec flags are removed from 
 
 ## Backward Compatibility
 
-Existing single-repository backup command lines continue to work:
+Existing single-repository backup command lines continue to work, unless they use one of the [removed registry flags](#removed-flags):
 
 ```bash
 oras backup --output backup.tar registry.com/repo:tag
@@ -1048,7 +1056,7 @@ Key features:
 - **Repository mapping**: Powerful remapping capabilities for restructuring during restore, with collision detection
 - **Safety features**: Dry-run preview and clear validation
 - **Enterprise-ready**: Credentials and connection settings per registry, error recovery, and progress reporting
-- **Consistent restore targets**: Repository paths are always kept under the restore target; existing backup command lines are unchanged and existing backups remain restorable
+- **Consistent restore targets**: Repository paths are always kept under the restore target; existing backup command lines work unless they use a removed registry flag, and existing backups remain restorable
 
 **Out of Scope:**
 - **Entire registry backup**: Not supported. Use registry-native replication/backup features for registry-wide operations.
