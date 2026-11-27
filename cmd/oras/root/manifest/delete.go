@@ -86,7 +86,7 @@ func deleteManifest(cmd *cobra.Command, opts *deleteOptions) error {
 	handler := display.NewManifestDeleteHandler(opts.Printer, &opts.Target)
 	manifests, err := opts.NewManifestDeleter(opts.Common, logger)
 	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
+		if opts.Type == option.TargetTypeOCILayout && errors.Is(err, fs.ErrNotExist) {
 			if refErr := opts.EnsureReferenceNotEmpty(cmd, true); refErr != nil {
 				return refErr
 			}

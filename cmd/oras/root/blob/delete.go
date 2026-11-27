@@ -82,7 +82,7 @@ func deleteBlob(cmd *cobra.Command, opts *deleteBlobOptions) (err error) {
 	handler := display.NewBlobDeleteHandler(opts.Printer, &opts.Target)
 	blobs, err := opts.NewBlobDeleter(opts.Common, logger)
 	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
+		if opts.Type == option.TargetTypeOCILayout && errors.Is(err, fs.ErrNotExist) {
 			if refErr := opts.EnsureReferenceNotEmpty(cmd, false); refErr != nil {
 				return refErr
 			}

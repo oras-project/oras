@@ -200,3 +200,126 @@ func readManifestTestFile(t *testing.T, path string) []byte {
 	}
 	return content
 }
+
+func Test_deleteCmd_missingRemoteCAFile(t *testing.T) {
+	t.Chdir(t.TempDir())
+	missingCA := filepath.Join(t.TempDir(), "missing-ca.pem")
+
+	stdout, err := runManifestDelete(t, "--force", "--ca-file", missingCA, "localhost:5000/test:v1")
+	if err == nil {
+		t.Fatal("deleteCmd() error = nil, want missing CA file error")
+	}
+	if !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("deleteCmd() error = %v, want error wrapping fs.ErrNotExist", err)
+	}
+	if strings.Contains(stdout, "Missing") {
+		t.Errorf("deleteCmd() output = %q, want no Missing output", stdout)
+	}
+}
+
+func Test_deleteCmd_existingInvalidOCILayout(t *testing.T) {
+	layoutContent := []byte(`{"imageLayoutVersion":"1.0.0"}`)
+	tests := []struct {
+		name       string
+		prepare    func(t *testing.T, dir string)
+		wantKeep   bool
+		wantLayout bool
+	}{
+		{
+			name:    "empty directory",
+			prepare: func(*testing.T, string) {},
+		},
+		{
+			name: "non-layout directory",
+			prepare: func(t *testing.T, dir string) {
+				if err := os.WriteFile(filepath.Join(dir, "keep.txt"), []byte("keep"), 0600); err != nil {
+					t.Fatalf("os.WriteFile() error = %v", err)
+				}
+			},
+			wantKeep: true,
+		},
+		{
+			name: "missing index.json",
+			prepare: func(t *testing.T, dir string) {
+				if err := os.WriteFile(filepath.Join(dir, "oci-layout"), layoutContent, 0600); err != nil {
+					t.Fatalf("os.WriteFile() error = %v", err)
+				}
+			},
+			wantLayout: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			layoutDir := filepath.Join(t.TempDir(), "layout")
+			if err := os.Mkdir(layoutDir, 0700); err != nil {
+				t.Fatalf("os.Mkdir() error = %v", err)
+			}
+			tt.prepare(t, layoutDir)
+
+			stdout, err := runManifestDelete(t, "--force", "--oci-layout-path", layoutDir, "v1")
+			if err == nil {
+				t.Fatal("deleteCmd() error = nil, want invalid OCI layout error")
+			}
+			if !strings.Contains(err.Error(), "not an OCI image layout") {
+				t.Errorf("deleteCmd() error = %v, want invalid OCI layout error", err)
+			}
+			if strings.Contains(stdout, "Missing") {
+				t.Errorf("deleteCmd() output = %q, want no Missing output", stdout)
+			}
+			if tt.wantLayout {
+				if got := readManifestTestFile(t, filepath.Join(layoutDir, "oci-layout")); !bytes.Equal(got, layoutContent) {
+					t.Errorf("oci-layout changed: got %q, want %q", got, layoutContent)
+				}
+				for _, name := range []string{"index.json", "blobs"} {
+					if _, err := os.Stat(filepath.Join(layoutDir, name)); !errors.Is(err, fs.ErrNotExist) {
+						t.Errorf("os.Stat(%q) error = %v, want fs.ErrNotExist", name, err)
+					}
+				}
+			} else {
+				for _, name := range []string{"oci-layout", "index.json", "blobs"} {
+					if _, err := os.Stat(filepath.Join(layoutDir, name)); !errors.Is(err, fs.ErrNotExist) {
+						t.Errorf("os.Stat(%q) error = %v, want fs.ErrNotExist", name, err)
+					}
+				}
+			}
+			_, keepErr := os.Stat(filepath.Join(layoutDir, "keep.txt"))
+			if tt.wantKeep && keepErr != nil {
+				t.Errorf("os.Stat(%q) error = %v, want existing file", "keep.txt", keepErr)
+			}
+			if !tt.wantKeep && !errors.Is(keepErr, fs.ErrNotExist) {
+				t.Errorf("os.Stat(%q) error = %v, want fs.ErrNotExist", "keep.txt", keepErr)
+			}
+		})
+	}
+}
+
+func Test_deleteCmd_existingOCILayout_deletesManifest(t *testing.T) {
+	layoutDir := filepath.Join(t.TempDir(), "layout")
+	ctx := context.Background()
+	store, err := oci.New(layoutDir)
+	if err != nil {
+		t.Fatalf("oci.New() error = %v", err)
+	}
+	desc, err := oras.PackManifest(ctx, store, oras.PackManifestVersion1_1, "application/example", oras.PackManifestOptions{})
+	if err != nil {
+		t.Fatalf("oras.PackManifest() error = %v", err)
+	}
+	if err := store.Tag(ctx, desc, "v1"); err != nil {
+		t.Fatalf("Store.Tag() error = %v", err)
+	}
+
+	stdout, err := runManifestDelete(t, "--force", "--oci-layout-path", layoutDir, "v1")
+	if err != nil {
+		t.Fatalf("deleteCmd() error = %v, want nil", err)
+	}
+	if !strings.Contains(stdout, "Deleted") {
+		t.Errorf("deleteCmd() output = %q, want Deleted output", stdout)
+	}
+	reopened, err := oci.New(layoutDir)
+	if err != nil {
+		t.Fatalf("oci.New() error = %v", err)
+	}
+	if _, err := reopened.Resolve(ctx, "v1"); err == nil {
+		t.Error("Resolve() error = nil, want deleted manifest to be unresolvable")
+	}
+}

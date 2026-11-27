@@ -16,11 +16,15 @@ limitations under the License.
 package option
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -723,5 +727,117 @@ func TestTarget_NewTarget_ociLayout(t *testing.T) {
 	}
 	if _, err := opts.NewManifestDeleter(Common{}, logrus.New()); err != nil {
 		t.Errorf("NewManifestDeleter() error = %v", err)
+	}
+}
+
+func TestTarget_NewDeleters_ociLayoutValidation(t *testing.T) {
+	missingPath := filepath.Join(t.TempDir(), "missing")
+	nonLayoutPath := t.TempDir()
+	if err := os.WriteFile(filepath.Join(nonLayoutPath, "keep.txt"), []byte("keep"), 0600); err != nil {
+		t.Fatalf("os.WriteFile() error = %v", err)
+	}
+	markerDirPath := t.TempDir()
+	if err := os.Mkdir(filepath.Join(markerDirPath, "oci-layout"), 0700); err != nil {
+		t.Fatalf("os.Mkdir() error = %v", err)
+	}
+	layoutContent := []byte(`{"imageLayoutVersion":"1.0.0"}`)
+	incompletePath := t.TempDir()
+	if err := os.WriteFile(filepath.Join(incompletePath, "oci-layout"), layoutContent, 0600); err != nil {
+		t.Fatalf("os.WriteFile() error = %v", err)
+	}
+	indexDirPath := t.TempDir()
+	if err := os.WriteFile(filepath.Join(indexDirPath, "oci-layout"), layoutContent, 0600); err != nil {
+		t.Fatalf("os.WriteFile() error = %v", err)
+	}
+	if err := os.Mkdir(filepath.Join(indexDirPath, "index.json"), 0700); err != nil {
+		t.Fatalf("os.Mkdir() error = %v", err)
+	}
+
+	tests := []struct {
+		name         string
+		path         string
+		wantErr      error
+		wantErrText  string
+		checkMarkers bool
+		wantLayout   bool
+	}{
+		{
+			name:    "missing path",
+			path:    missingPath,
+			wantErr: fs.ErrNotExist,
+		},
+		{
+			name:         "empty directory",
+			path:         t.TempDir(),
+			wantErrText:  "not an OCI image layout",
+			checkMarkers: true,
+		},
+		{
+			name:         "non-layout directory",
+			path:         nonLayoutPath,
+			wantErrText:  "not an OCI image layout",
+			checkMarkers: true,
+		},
+		{
+			name:        "oci-layout is a directory",
+			path:        markerDirPath,
+			wantErrText: "oci-layout is not a regular file",
+		},
+		{
+			name:        "missing index.json",
+			path:        incompletePath,
+			wantErrText: "index.json file not found",
+			wantLayout:  true,
+		},
+		{
+			name:        "index.json is a directory",
+			path:        indexDirPath,
+			wantErrText: "index.json is not a regular file",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := Target{Type: TargetTypeOCILayout, Path: tt.path}
+			for name, newDeleter := range map[string]func() (ResolvableDeleter, error){
+				"blob":     func() (ResolvableDeleter, error) { return opts.NewBlobDeleter(Common{}, logrus.New()) },
+				"manifest": func() (ResolvableDeleter, error) { return opts.NewManifestDeleter(Common{}, logrus.New()) },
+			} {
+				_, err := newDeleter()
+				if tt.wantErr != nil {
+					if !errors.Is(err, tt.wantErr) {
+						t.Errorf("%s deleter error = %v, want error wrapping %v", name, err, tt.wantErr)
+					}
+				} else if err == nil || !strings.Contains(err.Error(), tt.wantErrText) {
+					t.Errorf("%s deleter error = %v, want error containing %q", name, err, tt.wantErrText)
+				}
+			}
+			if tt.path == missingPath {
+				if _, err := os.Stat(missingPath); !errors.Is(err, fs.ErrNotExist) {
+					t.Errorf("os.Stat(%q) error = %v, want fs.ErrNotExist", missingPath, err)
+				}
+				return
+			}
+			if tt.wantLayout {
+				if got, err := os.ReadFile(filepath.Join(tt.path, "oci-layout")); err != nil {
+					t.Errorf("os.ReadFile() error = %v", err)
+				} else if !bytes.Equal(got, layoutContent) {
+					t.Errorf("oci-layout changed: got %q, want %q", got, layoutContent)
+				}
+				for _, name := range []string{"index.json", "blobs"} {
+					if _, err := os.Stat(filepath.Join(tt.path, name)); !errors.Is(err, fs.ErrNotExist) {
+						t.Errorf("os.Stat(%q) error = %v, want fs.ErrNotExist", name, err)
+					}
+				}
+				return
+			}
+			if !tt.checkMarkers {
+				return
+			}
+			for _, marker := range []string{"oci-layout", "index.json"} {
+				if _, err := os.Stat(filepath.Join(tt.path, marker)); !errors.Is(err, fs.ErrNotExist) {
+					t.Errorf("os.Stat(%q) error = %v, want fs.ErrNotExist", marker, err)
+				}
+			}
+		})
 	}
 }
