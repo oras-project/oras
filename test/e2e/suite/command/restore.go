@@ -52,18 +52,18 @@ var _ = Describe("ORAS beginners:", func() {
 		})
 
 		It("should fail when no input path provided", func() {
-			ORAS("restore", RegistryRef(ZOTHost, ImageRepo, foobar.Tag)).ExpectFailure().
+			ORAS("restore", fmt.Sprintf("%s/%s", ZOTHost, ImageRepo)).ExpectFailure().
 				MatchErrKeyWords("Error:", `required flag(s) "input" not set`).Exec()
 		})
 
 		It("should fail when the input path is empty", func() {
-			ORAS("restore", "--input", "", RegistryRef(ZOTHost, ImageRepo, foobar.Tag)).ExpectFailure().
+			ORAS("restore", "--input", "", fmt.Sprintf("%s/%s", ZOTHost, ImageRepo)).ExpectFailure().
 				MatchErrKeyWords("Error:", `the input path cannot be empty`).Exec()
 		})
 
 		It("should fail when input doesn't exist", func() {
 			nonExistentPath := filepath.Join(GinkgoT().TempDir(), "non-existent-path")
-			ORAS("restore", "--input", nonExistentPath, RegistryRef(ZOTHost, ImageRepo, foobar.Tag)).ExpectFailure().
+			ORAS("restore", "--input", nonExistentPath, fmt.Sprintf("%s/%s", ZOTHost, ImageRepo)).ExpectFailure().
 				MatchErrKeyWords("Error:").Exec()
 		})
 
