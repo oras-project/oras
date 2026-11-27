@@ -23,6 +23,7 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -169,6 +170,61 @@ func (target *Target) newOCIStore() (*oci.Store, error) {
 	return oci.New(target.Path)
 }
 
+// statTargetPath returns information about the target path, reporting a
+// well-formed error when the path does not exist.
+func (target *Target) statTargetPath() (fs.FileInfo, error) {
+	info, err := os.Stat(target.Path)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, fmt.Errorf("invalid argument %q: failed to find path %q: %w", target.RawReference, target.Path, err)
+		}
+		return nil, err
+	}
+	return info, nil
+}
+
+// validateOCILayoutDir validates that the target path is an existing OCI image
+// layout directory without creating or initializing it.
+func (target *Target) validateOCILayoutDir() error {
+	info, err := target.statTargetPath()
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("invalid argument %q: path %q is not an OCI image layout directory", target.RawReference, target.Path)
+	}
+	markerInfo, err := os.Stat(filepath.Join(target.Path, "oci-layout"))
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("invalid argument %q: path %q is not an OCI image layout: oci-layout file not found", target.RawReference, target.Path)
+		}
+		return err
+	}
+	if !markerInfo.Mode().IsRegular() {
+		return fmt.Errorf("invalid argument %q: path %q is not an OCI image layout: oci-layout is not a regular file", target.RawReference, target.Path)
+	}
+	indexInfo, err := os.Stat(filepath.Join(target.Path, "index.json"))
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("invalid argument %q: path %q is not an OCI image layout: index.json file not found", target.RawReference, target.Path)
+		}
+		return err
+	}
+	if !indexInfo.Mode().IsRegular() {
+		return fmt.Errorf("invalid argument %q: path %q is not an OCI image layout: index.json is not a regular file", target.RawReference, target.Path)
+	}
+	return nil
+}
+
+// newDeletionOCIStore opens an existing OCI image layout for deletion without
+// initializing it when the path does not exist or is not a valid layout.
+func (target *Target) newDeletionOCIStore() (*oci.Store, error) {
+	if err := target.validateOCILayoutDir(); err != nil {
+		return nil, err
+	}
+	return oci.New(target.Path)
+}
+
 func (target *Target) newRepository(common Common, logger logrus.FieldLogger) (*remote.Repository, error) {
 	// Path holds the reference with any tag or digest stripped, which is what
 	// remote.NewRepository requires.
@@ -199,7 +255,7 @@ func (target *Target) NewTarget(common Common, logger logrus.FieldLogger) (oras.
 func (target *Target) newDeleter(common Common, logger logrus.FieldLogger, selectDeleter func(*remote.Repository) ResolvableDeleter) (ResolvableDeleter, error) {
 	return resolveByTargetType(
 		target,
-		func() (ResolvableDeleter, error) { return target.newOCIStore() },
+		func() (ResolvableDeleter, error) { return target.newDeletionOCIStore() },
 		func() (ResolvableDeleter, error) {
 			repo, err := target.newRepository(common, logger)
 			if err != nil {
@@ -229,11 +285,8 @@ func (target *Target) NewReadonlyTarget(ctx context.Context, common Common, logg
 	return resolveByTargetType(
 		target,
 		func() (ReadOnlyGraphTagFinderTarget, error) {
-			info, err := os.Stat(target.Path)
+			info, err := target.statTargetPath()
 			if err != nil {
-				if errors.Is(err, fs.ErrNotExist) {
-					return nil, fmt.Errorf("invalid argument %q: failed to find path %q: %w", target.RawReference, target.Path, err)
-				}
 				return nil, err
 			}
 			if info.IsDir() {
