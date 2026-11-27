@@ -232,6 +232,7 @@ func Test_deleteCmd_existingInvalidOCILayout(t *testing.T) {
 		{
 			name: "non-layout directory",
 			prepare: func(t *testing.T, dir string) {
+				t.Helper()
 				if err := os.WriteFile(filepath.Join(dir, "keep.txt"), []byte("keep"), 0600); err != nil {
 					t.Fatalf("os.WriteFile() error = %v", err)
 				}
@@ -241,6 +242,7 @@ func Test_deleteCmd_existingInvalidOCILayout(t *testing.T) {
 		{
 			name: "missing index.json",
 			prepare: func(t *testing.T, dir string) {
+				t.Helper()
 				if err := os.WriteFile(filepath.Join(dir, "oci-layout"), layoutContent, 0600); err != nil {
 					t.Fatalf("os.WriteFile() error = %v", err)
 				}
