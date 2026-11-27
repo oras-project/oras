@@ -90,6 +90,9 @@ Example - Tag the manifest 'v1.0.1' to 'v1.0.2' in an OCI image layout folder 'l
 				}
 				return err
 			}
+			if err := option.ValidateConcurrency(opts.concurrency); err != nil {
+				return err
+			}
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {

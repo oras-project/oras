@@ -103,6 +103,9 @@ Example - Set custom concurrency level:
 			if err := option.Parse(cmd, &opts); err != nil {
 				return err
 			}
+			if err := option.ValidateConcurrency(opts.concurrency); err != nil {
+				return err
+			}
 
 			// parse target
 			var err error

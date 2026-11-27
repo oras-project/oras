@@ -136,6 +136,9 @@ Example - Push file "hi.txt" reproducibly with SOURCE_DATE_EPOCH:
 			if err := option.Parse(cmd, &opts); err != nil {
 				return err
 			}
+			if err := option.ValidateConcurrency(opts.concurrency); err != nil {
+				return err
+			}
 			if opts.Target.Type == option.TargetTypeOCILayout {
 				if opts.IsOCILayout {
 					if opts.Reference != "" && !strings.Contains(opts.RawReference, "@") {

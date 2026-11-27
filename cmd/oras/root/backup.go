@@ -125,6 +125,9 @@ Example - Set custom concurrency level:
 			if err := option.Parse(cmd, &opts); err != nil {
 				return err
 			}
+			if err := option.ValidateConcurrency(opts.concurrency); err != nil {
+				return err
+			}
 			if len(opts.Platforms.Platforms) > 1 {
 				return errors.New("multiple platforms are not supported yet")
 			}

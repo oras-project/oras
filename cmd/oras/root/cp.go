@@ -122,6 +122,9 @@ Example - Copy a multi-arch image to a destination that may be partially populat
 			if err != nil {
 				return err
 			}
+			if err := option.ValidateConcurrency(opts.concurrency); err != nil {
+				return err
+			}
 			if err := option.ValidateExtraTags(opts.extraRefs); err != nil {
 				return err
 			}

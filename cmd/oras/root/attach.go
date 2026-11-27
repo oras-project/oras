@@ -109,6 +109,9 @@ Example - Attach file 'hi.txt' reproducibly with SOURCE_DATE_EPOCH:
 			opts.FileRefs = args[1:]
 			err := option.Parse(cmd, &opts)
 			if err == nil {
+				if err := option.ValidateConcurrency(opts.concurrency); err != nil {
+					return err
+				}
 				opts.DisableTTY(opts.Debug, false)
 				if err = oerrors.CheckMutuallyExclusiveFlags(cmd.Flags(), "config", "platform"); err != nil {
 					return err

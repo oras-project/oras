@@ -109,6 +109,9 @@ Example - Pull artifact files tagged 'example.com:v1' from an OCI image layout f
 			if err != nil {
 				return err
 			}
+			if err := option.ValidateConcurrency(opts.concurrency); err != nil {
+				return err
+			}
 			opts.DisableTTY(opts.Debug, false)
 			return nil
 		},

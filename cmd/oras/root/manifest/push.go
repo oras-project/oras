@@ -108,6 +108,9 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 			if err := option.Parse(cmd, &opts); err != nil {
 				return err
 			}
+			if err := option.ValidateConcurrency(opts.concurrency); err != nil {
+				return err
+			}
 			return option.ValidateExtraTags(opts.extraRefs)
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
