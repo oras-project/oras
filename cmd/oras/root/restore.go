@@ -77,7 +77,7 @@ Example - Restore all tagged artifacts from a directory under a namespace:
 Example - Perform a dry run without actually uploading artifacts:
   oras restore --input hello --dry-run localhost:5000
 
-Example - Keep the source registry in the target repository path:
+Example - Keep the source registry in the target repository path, e.g. restore localhost:5001/app to localhost:5000/localhost_5001/app:
   oras restore --input hello --preserve-source-registry localhost:5000
 
 Example - Exclude referrers when restoring artifacts:
@@ -126,7 +126,7 @@ Example - Set custom concurrency level:
 	// optional flags
 	cmd.Flags().BoolVar(&opts.excludeReferrers, "exclude-referrers", false, "restore artifacts excluding their referrers")
 	cmd.Flags().BoolVar(&opts.dryRun, "dry-run", false, "simulate the restore process without actually uploading any artifacts")
-	cmd.Flags().BoolVar(&opts.preserveSourceRegistry, "preserve-source-registry", false, "keep the source registry as the first path component of each target repository; source registries with a port are not supported")
+	cmd.Flags().BoolVar(&opts.preserveSourceRegistry, "preserve-source-registry", false, "keep the source registry as the first path component of each target repository, lowercased and with ':' replaced by '_' (e.g. localhost_5000)")
 	opts.Concurrency.Concurrency = 5
 	opts.EnableDistributionSpecFlag()
 	// apply flags
@@ -302,7 +302,8 @@ func resolveRestoreRefs(ctx context.Context, src oras.ReadOnlyTarget) (srcRefs, 
 //
 // A full reference <registry>/<repository>:<tag> is restored to
 // <target>/<repository>, or to <target>/<registry>/<repository> if
-// preserveSourceRegistry is set. A tag-only reference from a backup created by
+// preserveSourceRegistry is set, with <registry> encoded by
+// encodeRegistryComponent. A tag-only reference from a backup created by
 // an earlier version records no repository, so it is restored to target.
 // Two source repositories restoring to the same repository fail before
 // anything is pushed.
@@ -329,16 +330,21 @@ func restoreTargets(target string, srcRefs []string, preserveSourceRegistry bool
 		srcRepo := ref.Registry + "/" + ref.Repository
 		dstRepo := target + "/" + ref.Repository
 		if preserveSourceRegistry {
-			if strings.Contains(ref.Registry, ":") {
+			host, err := encodeRegistryComponent(ref.Registry)
+			if err != nil {
 				return nil, &oerrors.Error{
-					Err:            fmt.Errorf("source registry %q of %q in the backup has a port and cannot be a repository path component", ref.Registry, srcRef),
-					Recommendation: "--preserve-source-registry does not support source registries with a port. Restore without it",
+					Err:            fmt.Errorf("source registry of %q in the backup cannot be a repository path component: %w", srcRef, err),
+					Recommendation: "Restore without --preserve-source-registry",
 				}
 			}
-			dstRepo = target + "/" + srcRepo
+			dstRepo = target + "/" + host + "/" + ref.Repository
 		}
-		if _, err := properties.NewReference(dstRepo); err != nil {
+		dst, err := properties.NewReference(dstRepo)
+		if err != nil {
 			return nil, fmt.Errorf("invalid target repository %q for %q in the backup: %w", dstRepo, srcRef, err)
+		}
+		if len(dst.Repository) > maxRepositoryLength {
+			return nil, fmt.Errorf("target repository %q for %q in the backup is longer than %d characters", dstRepo, srcRef, maxRepositoryLength)
 		}
 		if prev, ok := sources[dstRepo]; ok && prev != srcRepo {
 			if !reported[srcRepo] {
@@ -379,6 +385,22 @@ func parseRestoreTarget(target string) (string, error) {
 		return "", fmt.Errorf("invalid target %q: %w", target, err)
 	}
 	return target, nil
+}
+
+// maxRepositoryLength is the maximum length of a repository name accepted by
+// registries.
+const maxRepositoryLength = 255
+
+// encodeRegistryComponent encodes a registry host as a repository path
+// component: the host is lowercased and the ':' before a port is replaced by
+// '_', e.g. registry.lan:5000 becomes registry.lan_5000. Host names cannot
+// contain '_', so two different hosts never encode to the same component.
+// IPv6 literal hosts cannot be encoded.
+func encodeRegistryComponent(host string) (string, error) {
+	if strings.HasPrefix(host, "[") {
+		return "", fmt.Errorf("IPv6 literal host %q is not supported", host)
+	}
+	return strings.ReplaceAll(strings.ToLower(host), ":", "_"), nil
 }
 
 // isTagOnlyRefName reports whether an org.opencontainers.image.ref.name value
