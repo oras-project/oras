@@ -125,7 +125,7 @@ type RestoreHandler interface {
 
 	OnTarLoaded(path string, size int64) error
 	OnTagsFound(tags []string) error
-	OnArtifactPushed(tag string, referrerCount int) error
+	OnArtifactPushed(srcRef, dstRef string, referrerCount int) error
 	OnRestoreCompleted(tagsCount int, repo string, duration time.Duration) error
 }
 

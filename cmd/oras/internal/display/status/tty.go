@@ -332,6 +332,8 @@ func (rh *TTYRestoreHandler) StartTracking(gt oras.GraphTarget) (oras.GraphTarge
 	if err != nil {
 		return nil, err
 	}
+	// artifacts may be restored to different repositories
+	rh.fetcher = gt
 	return rh.tracked, err
 }
 

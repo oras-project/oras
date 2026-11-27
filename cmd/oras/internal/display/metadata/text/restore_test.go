@@ -171,7 +171,8 @@ func TestRestoreHandler_OnTagsFound(t *testing.T) {
 }
 
 func TestRestoreHandler_OnArtifactPushed(t *testing.T) {
-	tag := "latest"
+	srcRef := "docker.io/library/alpine:latest"
+	dstRef := "localhost:5000/library/alpine:latest"
 	referrerCount := 2
 	tests := []struct {
 		name    string
@@ -185,21 +186,21 @@ func TestRestoreHandler_OnArtifactPushed(t *testing.T) {
 			dryRun:  false,
 			out:     &bytes.Buffer{},
 			wantErr: false,
-			want:    fmt.Sprintf("Pushed tag %s with %d referrer(s)\n", tag, referrerCount),
+			want:    fmt.Sprintf("Pushed tag %s to %s with %d referrer(s)\n", srcRef, dstRef, referrerCount),
 		},
 		{
 			name:    "dry run",
 			dryRun:  true,
 			out:     &bytes.Buffer{},
 			wantErr: false,
-			want:    fmt.Sprintf("Dry run: would push tag %s with %d referrer(s)\n", tag, referrerCount),
+			want:    fmt.Sprintf("Dry run: would push tag %s to %s with %d referrer(s)\n", srcRef, dstRef, referrerCount),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			printer := output.NewPrinter(tt.out, os.Stderr)
 			handler := NewRestoreHandler(printer, tt.dryRun)
-			if err := handler.OnArtifactPushed(tag, referrerCount); (err != nil) != tt.wantErr {
+			if err := handler.OnArtifactPushed(srcRef, dstRef, referrerCount); (err != nil) != tt.wantErr {
 				t.Errorf("OnArtifactPushed() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if !tt.wantErr {

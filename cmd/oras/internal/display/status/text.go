@@ -289,6 +289,8 @@ func (trh *TextRestoreHandler) PostCopy(ctx context.Context, desc ocispec.Descri
 
 // StartTracking implements StartTracking of RestoreHandler.
 func (trh *TextRestoreHandler) StartTracking(gt oras.GraphTarget) (oras.GraphTarget, error) {
+	// artifacts may be restored to different repositories
+	trh.fetcher = gt
 	return gt, nil
 }
 

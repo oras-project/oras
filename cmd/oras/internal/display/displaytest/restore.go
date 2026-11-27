@@ -76,7 +76,7 @@ func (h *RecordingRestoreMetadataHandler) OnTagsFound([]string) error {
 	return h.TagsFoundErr
 }
 
-func (h *RecordingRestoreMetadataHandler) OnArtifactPushed(string, int) error {
+func (h *RecordingRestoreMetadataHandler) OnArtifactPushed(string, string, int) error {
 	h.Recorder.Record("OnArtifactPushed")
 	return h.ArtifactPushedErr
 }
