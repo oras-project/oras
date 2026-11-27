@@ -119,7 +119,10 @@ func tagManifest(cmd *cobra.Command, opts *tagOptions) error {
 	tagNOpts := oras.DefaultTagNOptions
 	tagNOpts.Concurrency = opts.concurrency
 	tagHandler := display.NewTagHandler(opts.Printer, opts.Target)
-	if opts.Type == option.TargetTypeOCILayout {
+	// Validate extra tags only when ExtraTagTarget will prefix them onto a
+	// repository. --oci-layout (and a bare --oci-layout-path reference) still
+	// accept repository-qualified tag names such as example.registry.com/foo:latest.
+	if opts.ScopesExtraTags() {
 		if err := option.ValidateExtraTags(opts.targetRefs); err != nil {
 			return err
 		}

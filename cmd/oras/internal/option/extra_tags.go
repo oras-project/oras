@@ -51,22 +51,41 @@ func ValidateExtraTags(tags []string) error {
 	return nil
 }
 
-// ExtraTagTarget scopes validated additional tags to the destination repository
-// when a repository-qualified reference is used with --oci-layout-path.
-func (target *Target) ExtraTagTarget(dst oras.Target) oras.Target {
+// extraTagPrefix returns the repository prefix ExtraTagTarget would apply to
+// additional tags, and whether that prefixing applies. Prefixing happens only
+// for a repository-qualified reference with --oci-layout-path, not for
+// --oci-layout or a bare --oci-layout-path reference.
+func (target *Target) extraTagPrefix() (string, bool) {
 	if target.Type != TargetTypeOCILayout || target.IsOCILayout {
-		return dst
+		return "", false
 	}
 	ref, err := repository.ParseReference(target.Reference)
 	if err != nil || ref.Repository == "" {
-		return dst
+		return "", false
 	}
 
 	// Layout references are stored verbatim. Preserve the repository spelling
 	// from the primary reference, including any registry port.
 	name, _, _ := strings.Cut(target.Reference, "@")
 	name = strings.TrimSuffix(name, ":"+ref.Tag)
-	return &extraTagTarget{Target: dst, prefix: name + ":"}
+	return name + ":", true
+}
+
+// ScopesExtraTags reports whether ExtraTagTarget would prefix additional tags
+// with the destination repository.
+func (target *Target) ScopesExtraTags() bool {
+	_, ok := target.extraTagPrefix()
+	return ok
+}
+
+// ExtraTagTarget scopes validated additional tags to the destination repository
+// when a repository-qualified reference is used with --oci-layout-path.
+func (target *Target) ExtraTagTarget(dst oras.Target) oras.Target {
+	prefix, ok := target.extraTagPrefix()
+	if !ok {
+		return dst
+	}
+	return &extraTagTarget{Target: dst, prefix: prefix}
 }
 
 type extraTagTarget struct {

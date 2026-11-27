@@ -192,11 +192,15 @@ func TestOCILayoutPathTag(t *testing.T) {
 		t.Errorf("repository tags = %q, want tags latest, stable, v1", got)
 	}
 
-	// The --oci-layout form has no repository: its tags stay bare.
+	// The --oci-layout form has no repository: its tags stay bare, including
+	// repository-qualified names used by `oras repo tags --oci-layout-path`.
 	push("legacy artifact", "--oci-layout", layout+":legacy")
-	run("tag", "--oci-layout", layout+":legacy", "legacy-alias")
-	if got, want := mustResolve("legacy-alias"), mustResolve("legacy"); got != want {
-		t.Errorf("legacy-alias resolves to %s, want %s", got, want)
+	run("tag", "--oci-layout", layout+":legacy", "legacy-alias", "example.registry.com/foo:latest")
+	legacyDigest := mustResolve("legacy")
+	for _, alias := range []string{"legacy-alias", "example.registry.com/foo:latest"} {
+		if got := mustResolve(alias); got != legacyDigest {
+			t.Errorf("%q resolves to %s, want %s", alias, got, legacyDigest)
+		}
 	}
 	// So does a bare reference with --oci-layout-path.
 	push("bare artifact", "--oci-layout-path", layout, "bare")
