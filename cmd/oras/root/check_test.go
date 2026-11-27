@@ -1422,8 +1422,8 @@ func Test_checkWholeLayout_directory(t *testing.T) {
 		if err == nil {
 			t.Fatalf("expected error, got nil\noutput:\n%s", out)
 		}
-		if !strings.Contains(out, "Checked 1 nodes: 1 verified, 0 failed") {
-			t.Errorf("want Checked 1 nodes: 1 verified, 0 failed, got:\n%s", out)
+		if !strings.Contains(out, "Checked 0 nodes: 0 verified, 0 failed") {
+			t.Errorf("want Checked 0 nodes: 0 verified, 0 failed, got:\n%s", out)
 		}
 		if !strings.Contains(out, "Layout problems: 2") {
 			t.Errorf("want Layout problems: 2, got:\n%s", out)
@@ -1564,7 +1564,7 @@ func Test_checkWholeLayout_directory(t *testing.T) {
 			t.Fatalf("unreferenced intact blobs should pass, got err = %v\noutput:\n%s", err, out)
 		}
 		lines := summary(out)
-		if len(lines) != 2 || lines[0] != "Checked 2 nodes: 2 verified, 0 failed" || !strings.Contains(lines[1], "Note: 2 unreferenced blobs") {
+		if len(lines) != 2 || lines[0] != "Checked 0 nodes: 0 verified, 0 failed" || !strings.Contains(lines[1], "Note: 2 unreferenced blobs") {
 			t.Errorf("summary = %q", lines)
 		}
 	})

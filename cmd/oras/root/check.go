@@ -290,7 +290,6 @@ func doCheckLayoutDir(ctx context.Context, layoutPath string, concurrency int, p
 		if !ok {
 			continue
 		}
-		verifiedDigests[dgst] = true
 		if info, err := fs.Stat(fsys, entry.Path); err == nil {
 			verifiedSet.Add(ocispec.Descriptor{Digest: dgst, Size: info.Size()})
 		}
@@ -747,6 +746,9 @@ func (c *checker) printSummary(verified int, failures, warnings []checkFinding, 
 		case len(nodeFailures) > 0:
 			return fmt.Errorf("check failed: %d of %d nodes did not pass", len(nodeFailures), total)
 		default:
+			if len(layoutProblems) == 1 {
+				return errors.New("check failed: 1 layout problem")
+			}
 			return fmt.Errorf("check failed: %d layout problems", len(layoutProblems))
 		}
 	}
