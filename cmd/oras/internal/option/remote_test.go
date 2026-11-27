@@ -24,6 +24,7 @@ import (
 	_ "embed"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -34,9 +35,12 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/opencontainers/go-digest"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/oras-project/oras-go/v3/registry/remote"
 	"github.com/oras-project/oras-go/v3/registry/remote/auth"
 	"github.com/oras-project/oras-go/v3/registry/remote/credentials"
@@ -136,6 +140,24 @@ func TestRemote_FlagsInit(_ *testing.T) {
 	ApplyFlags(&test, pflag.NewFlagSet("oras-test", pflag.ExitOnError))
 }
 
+func writeTestAuthConfig(t *testing.T, auths map[string]credentials.Credential) string {
+	t.Helper()
+	entries := make(map[string]map[string]string, len(auths))
+	for host, cred := range auths {
+		encoded := base64.StdEncoding.EncodeToString([]byte(cred.Username + ":" + cred.Password))
+		entries[host] = map[string]string{"auth": encoded}
+	}
+	data, err := json.Marshal(map[string]any{"auths": entries})
+	if err != nil {
+		t.Fatalf("Marshal() error = %v", err)
+	}
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	if err := os.WriteFile(configPath, data, 0o600); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	return configPath
+}
+
 func TestRemote_authClient_RawCredential(t *testing.T) {
 	password := make([]byte, 12)
 	if _, err := rand.Read(password); err != nil {
@@ -148,18 +170,26 @@ func TestRemote_authClient_RawCredential(t *testing.T) {
 	opts := Remote{
 		Username: want.Username,
 		Secret:   want.Password,
+		Configs:  []string{writeTestAuthConfig(t, nil)},
 	}
 	client, err := opts.authClient("hostname", false, false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	got, err := client.CredentialFunc(nil, properties.Resource{})
+	got, err := client.CredentialFunc(t.Context(), properties.Resource{Registry: "hostname"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-
-	if got.Username != want.Username || got.Password != want.Password {
+	if got != want {
 		t.Fatalf("expect: %v, got: %v", want, got)
+	}
+
+	other, err := client.CredentialFunc(t.Context(), properties.Resource{Registry: "other.example"})
+	if err != nil {
+		t.Fatalf("unexpected error for other host: %v", err)
+	}
+	if other != credentials.EmptyCredential {
+		t.Fatalf("expected empty credential for other host, got: %v", other)
 	}
 }
 
@@ -1408,4 +1438,524 @@ func TestRemote_ConfigPath_independentOfAuthClient(t *testing.T) {
 	if _, err := invalidOpts.ConfigPath(); err == nil {
 		t.Error("ConfigPath() with invalid config JSON = nil, want error")
 	}
+}
+
+func TestRemote_authClient_StaticCredentialScopedToRegistryHost(t *testing.T) {
+	t.Run("username and password override store on registry host case-insensitively", func(t *testing.T) {
+		const (
+			cliUser = "cli-user"
+			cliPass = "cli-pass"
+		)
+		wantAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(cliUser+":"+cliPass))
+		var gotAuth string
+		registry := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("Authorization") != wantAuth {
+				w.Header().Set("Www-Authenticate", `Basic realm="registry"`)
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			gotAuth = r.Header.Get("Authorization")
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer registry.Close()
+
+		registryURL, err := url.Parse(registry.URL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		configPath := writeTestAuthConfig(t, map[string]credentials.Credential{
+			registryURL.Host: {Username: "store-user", Password: "store-pass"},
+		})
+		opts := Remote{
+			Username:  cliUser,
+			Secret:    cliPass,
+			Configs:   []string{configPath},
+			plainHTTP: plainHTTPEnabled,
+		}
+		client, err := opts.authClient(registryURL.Host, true, false)
+		if err != nil {
+			t.Fatalf("authClient() error = %v", err)
+		}
+
+		// Case-insensitive host lookup returns static CLI credential.
+		gotCred, err := client.CredentialFunc(t.Context(), properties.Resource{Registry: strings.ToUpper(registryURL.Host)})
+		if err != nil {
+			t.Fatalf("CredentialFunc() error = %v", err)
+		}
+		wantCred := credentials.Credential{Username: cliUser, Password: cliPass}
+		if gotCred != wantCred {
+			t.Fatalf("CredentialFunc() = %+v, want %+v", gotCred, wantCred)
+		}
+
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, registry.URL+"/v2/", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("client.Do() error = %v", err)
+		}
+		if err := resp.Body.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusOK)
+		}
+		if gotAuth != wantAuth {
+			t.Fatalf("registry received Authorization %q, want %q", gotAuth, wantAuth)
+		}
+	})
+
+	t.Run("identity token is used on registry host", func(t *testing.T) {
+		const (
+			idToken     = "cli-identity-token"
+			accessToken = "issued-access-token"
+		)
+		var (
+			gotRefreshToken string
+			gotBearerAuth   string
+		)
+		var registryURL string
+		registry := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.URL.Path {
+			case "/oauth2/token":
+				if err := r.ParseForm(); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				gotRefreshToken = r.Form.Get("refresh_token")
+				if gotRefreshToken != idToken {
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = fmt.Fprintf(w, `{"access_token":%q}`, accessToken)
+			case "/v2/":
+				if r.Header.Get("Authorization") != "Bearer "+accessToken {
+					w.Header().Set("Www-Authenticate", fmt.Sprintf(`Bearer realm="%s/oauth2/token",service="registry"`, registryURL))
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+				gotBearerAuth = r.Header.Get("Authorization")
+				w.WriteHeader(http.StatusOK)
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		}))
+		defer registry.Close()
+		registryURL = registry.URL
+
+		parsedURL, err := url.Parse(registry.URL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		configPath := writeTestAuthConfig(t, map[string]credentials.Credential{
+			parsedURL.Host: {Username: "store-user", Password: "store-pass"},
+		})
+		opts := Remote{
+			Secret:    idToken,
+			Configs:   []string{configPath},
+			plainHTTP: plainHTTPEnabled,
+		}
+		client, err := opts.authClient(parsedURL.Host, true, false)
+		if err != nil {
+			t.Fatalf("authClient() error = %v", err)
+		}
+
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, registry.URL+"/v2/", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("client.Do() error = %v", err)
+		}
+		if err := resp.Body.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusOK)
+		}
+		if gotRefreshToken != idToken {
+			t.Fatalf("token endpoint received refresh_token %q, want %q", gotRefreshToken, idToken)
+		}
+		if gotBearerAuth != "Bearer "+accessToken {
+			t.Fatalf("registry received Authorization %q, want %q", gotBearerAuth, "Bearer "+accessToken)
+		}
+	})
+}
+
+func TestRemote_authClient_CrossHostUploadLocationUsesStore(t *testing.T) {
+	const (
+		cliUser     = "cli-user"
+		cliPass     = "cli-pass"
+		uploadUser  = "upload-user"
+		uploadPass  = "upload-pass"
+		sessionPath = "/v2/test/blobs/uploads/session"
+	)
+	cliAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(cliUser+":"+cliPass))
+	uploadStoreAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(uploadUser+":"+uploadPass))
+	blob := []byte("cross-host-upload-payload")
+	blobDesc := ocispec.Descriptor{
+		MediaType: "application/octet-stream",
+		Digest:    digest.FromBytes(blob),
+		Size:      int64(len(blob)),
+	}
+
+	runUploadTest := func(t *testing.T, withStoreCred bool) {
+		t.Helper()
+		var (
+			mu         sync.Mutex
+			uploadAuth []string
+			gotBlob    []byte
+		)
+		uploadServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			authHeader := r.Header.Get("Authorization")
+			mu.Lock()
+			uploadAuth = append(uploadAuth, authHeader)
+			mu.Unlock()
+			if !withStoreCred || authHeader != uploadStoreAuth {
+				w.Header().Set("Www-Authenticate", `Basic realm="uploads"`)
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			var err error
+			gotBlob, err = io.ReadAll(r.Body)
+			if err != nil {
+				t.Errorf("ReadAll() error = %v", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Docker-Content-Digest", blobDesc.Digest.String())
+			w.WriteHeader(http.StatusCreated)
+		}))
+		defer uploadServer.Close()
+
+		var registryAuth []string
+		registryServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			authHeader := r.Header.Get("Authorization")
+			mu.Lock()
+			registryAuth = append(registryAuth, authHeader)
+			mu.Unlock()
+			if authHeader != cliAuth {
+				w.Header().Set("Www-Authenticate", `Basic realm="registry"`)
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			if r.Method == http.MethodPost && r.URL.Path == "/v2/test/blobs/uploads/" {
+				w.Header().Set("Location", uploadServer.URL+sessionPath)
+				w.WriteHeader(http.StatusAccepted)
+				return
+			}
+			w.WriteHeader(http.StatusForbidden)
+		}))
+		defer registryServer.Close()
+
+		registryURL, err := url.Parse(registryServer.URL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		uploadURL, err := url.Parse(uploadServer.URL)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		storeAuths := map[string]credentials.Credential{}
+		if withStoreCred {
+			storeAuths[uploadURL.Host] = credentials.Credential{Username: uploadUser, Password: uploadPass}
+		}
+		opts := Remote{
+			Username:  cliUser,
+			Secret:    cliPass,
+			Configs:   []string{writeTestAuthConfig(t, storeAuths)},
+			plainHTTP: plainHTTPEnabled,
+		}
+		repo, err := opts.NewRepository(registryURL.Host+"/test", Common{}, logrus.New())
+		if err != nil {
+			t.Fatalf("NewRepository() error = %v", err)
+		}
+
+		pushErr := repo.Blobs().Push(t.Context(), blobDesc, bytes.NewReader(blob))
+		if withStoreCred {
+			if pushErr != nil {
+				t.Fatalf("Blobs().Push() error = %v", pushErr)
+			}
+			if !bytes.Equal(gotBlob, blob) {
+				t.Fatalf("uploaded blob = %q, want %q", gotBlob, blob)
+			}
+			if len(uploadAuth) < 2 || uploadAuth[len(uploadAuth)-1] != uploadStoreAuth {
+				t.Fatalf("upload host authorizations = %v, want final auth %q", uploadAuth, uploadStoreAuth)
+			}
+		} else {
+			if !errors.Is(pushErr, auth.ErrBasicCredentialNotFound) {
+				t.Fatalf("Blobs().Push() error = %v, want %v", pushErr, auth.ErrBasicCredentialNotFound)
+			}
+		}
+
+		for i, got := range uploadAuth {
+			if got == cliAuth {
+				t.Fatalf("upload host request %d leaked static CLI credential", i)
+			}
+		}
+		if len(registryAuth) == 0 || registryAuth[len(registryAuth)-1] != cliAuth {
+			t.Fatalf("registry authorizations = %v, want final auth %q", registryAuth, cliAuth)
+		}
+	}
+
+	t.Run("uses store credential for upload host", func(t *testing.T) {
+		runUploadTest(t, true)
+	})
+	t.Run("does not leak static credential when store has no entry", func(t *testing.T) {
+		runUploadTest(t, false)
+	})
+}
+
+func TestRemote_authClient_RedirectToOtherHostUsesStore(t *testing.T) {
+	const (
+		cliUser      = "cli-user"
+		cliPass      = "cli-pass"
+		redirectUser = "redirect-user"
+		redirectPass = "redirect-pass"
+	)
+	cliAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(cliUser+":"+cliPass))
+	redirectStoreAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(redirectUser+":"+redirectPass))
+
+	var (
+		mu           sync.Mutex
+		redirectAuth []string
+	)
+	redirectServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		mu.Lock()
+		redirectAuth = append(redirectAuth, authHeader)
+		mu.Unlock()
+		if authHeader != redirectStoreAuth {
+			w.Header().Set("Www-Authenticate", `Basic realm="redirect-target"`)
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer redirectServer.Close()
+
+	sourceServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != cliAuth {
+			w.Header().Set("Www-Authenticate", `Basic realm="source"`)
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		http.Redirect(w, r, redirectServer.URL+"/blob", http.StatusFound)
+	}))
+	defer sourceServer.Close()
+
+	sourceURL, err := url.Parse(sourceServer.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	redirectURL, err := url.Parse(redirectServer.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	configPath := writeTestAuthConfig(t, map[string]credentials.Credential{
+		redirectURL.Host: {Username: redirectUser, Password: redirectPass},
+	})
+	opts := Remote{
+		Username:  cliUser,
+		Secret:    cliPass,
+		Configs:   []string{configPath},
+		plainHTTP: plainHTTPEnabled,
+	}
+
+	t.Run("automatic redirect never sends static credential", func(t *testing.T) {
+		mu.Lock()
+		redirectAuth = nil
+		mu.Unlock()
+
+		client, err := opts.authClient(sourceURL.Host, true, false)
+		if err != nil {
+			t.Fatalf("authClient() error = %v", err)
+		}
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, sourceServer.URL+"/v2/test/blobs/sha256:deadbeef", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("client.Do() error = %v", err)
+		}
+		if err := resp.Body.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if resp.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusUnauthorized)
+		}
+		mu.Lock()
+		gotAuths := append([]string(nil), redirectAuth...)
+		mu.Unlock()
+		for i, got := range gotAuths {
+			if got != "" {
+				t.Fatalf("redirect target request %d received unexpected Authorization %q", i, got)
+			}
+		}
+	})
+
+	t.Run("redirect target host resolves credential from store", func(t *testing.T) {
+		mu.Lock()
+		redirectAuth = nil
+		mu.Unlock()
+
+		client, err := opts.authClient(sourceURL.Host, true, false)
+		if err != nil {
+			t.Fatalf("authClient() error = %v", err)
+		}
+		gotCred, err := client.CredentialFunc(t.Context(), properties.Resource{Registry: redirectURL.Host})
+		if err != nil {
+			t.Fatalf("CredentialFunc() error = %v", err)
+		}
+		wantCred := credentials.Credential{Username: redirectUser, Password: redirectPass}
+		if gotCred != wantCred {
+			t.Fatalf("CredentialFunc() = %+v, want %+v", gotCred, wantCred)
+		}
+
+		// Simulate a client following the redirect target URL with the same auth.Client.
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, redirectServer.URL+"/blob", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("client.Do() error = %v", err)
+		}
+		if err := resp.Body.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusOK)
+		}
+		mu.Lock()
+		gotAuths := append([]string(nil), redirectAuth...)
+		mu.Unlock()
+		if len(gotAuths) < 2 || gotAuths[len(gotAuths)-1] != redirectStoreAuth {
+			t.Fatalf("redirect target authorizations = %v, want final auth %q", gotAuths, redirectStoreAuth)
+		}
+		for i, got := range gotAuths {
+			if got == cliAuth {
+				t.Fatalf("redirect target request %d leaked static CLI credential", i)
+			}
+		}
+	})
+}
+
+func TestRemote_authClient_DockerIOAliasScoping(t *testing.T) {
+	cliCred := credentials.Credential{Username: "cli-user", Password: "cli-pass"}
+	hubStoreCred := credentials.Credential{Username: "hub-store-user", Password: "hub-store-pass"}
+	otherStoreCred := credentials.Credential{Username: "other-store-user", Password: "other-store-pass"}
+
+	configPath := writeTestAuthConfig(t, map[string]credentials.Credential{
+		"https://index.docker.io/v1/": hubStoreCred,
+		"other.example":               otherStoreCred,
+	})
+	opts := Remote{
+		Username:  cliCred.Username,
+		Secret:    cliCred.Password,
+		Configs:   []string{configPath},
+		plainHTTP: plainHTTPNotSpecified,
+	}
+
+	for _, regName := range []string{"docker.io", "DOCKER.IO", "registry-1.docker.io"} {
+		t.Run("NewRegistry/"+regName, func(t *testing.T) {
+			reg, err := opts.NewRegistry(regName, Common{}, logrus.New())
+			if err != nil {
+				t.Fatalf("NewRegistry() error = %v", err)
+			}
+			client, ok := reg.Client.(*auth.Client)
+			if !ok {
+				t.Fatalf("client has type %T, want *auth.Client", reg.Client)
+			}
+			for _, lookup := range []string{"registry-1.docker.io", "REGISTRY-1.DOCKER.IO", "docker.io", "DOCKER.IO"} {
+				got, err := client.CredentialFunc(t.Context(), properties.Resource{Registry: lookup})
+				if err != nil {
+					t.Fatalf("CredentialFunc(%q) error = %v", lookup, err)
+				}
+				if got != cliCred {
+					t.Fatalf("CredentialFunc(%q) = %+v, want %+v", lookup, got, cliCred)
+				}
+			}
+			gotOther, err := client.CredentialFunc(t.Context(), properties.Resource{Registry: "other.example"})
+			if err != nil {
+				t.Fatalf("CredentialFunc(other.example) error = %v", err)
+			}
+			if gotOther != otherStoreCred {
+				t.Fatalf("CredentialFunc(other.example) = %+v, want %+v", gotOther, otherStoreCred)
+			}
+		})
+	}
+
+	t.Run("direct authClient with docker.io", func(t *testing.T) {
+		client, err := opts.authClient("docker.io", false, false)
+		if err != nil {
+			t.Fatalf("authClient() error = %v", err)
+		}
+		got, err := client.CredentialFunc(t.Context(), properties.Resource{Registry: "registry-1.docker.io"})
+		if err != nil {
+			t.Fatalf("CredentialFunc() error = %v", err)
+		}
+		if got != cliCred {
+			t.Fatalf("CredentialFunc() = %+v, want %+v", got, cliCred)
+		}
+	})
+
+	t.Run("other registry falls back to docker hub store entry", func(t *testing.T) {
+		client, err := opts.authClient("other.example", false, false)
+		if err != nil {
+			t.Fatalf("authClient() error = %v", err)
+		}
+		for _, lookup := range []string{"registry-1.docker.io", "docker.io"} {
+			got, err := client.CredentialFunc(t.Context(), properties.Resource{Registry: lookup})
+			if err != nil {
+				t.Fatalf("CredentialFunc(%q) error = %v", lookup, err)
+			}
+			if got != hubStoreCred {
+				t.Fatalf("CredentialFunc(%q) = %+v, want %+v", lookup, got, hubStoreCred)
+			}
+		}
+	})
+}
+
+func TestRemote_authClient_DeferredStoreError(t *testing.T) {
+	invalidConfig := filepath.Join(t.TempDir(), "invalid.json")
+	if err := os.WriteFile(invalidConfig, []byte(`{invalid`), 0o600); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	t.Run("empty CLI credential fails fast on invalid config", func(t *testing.T) {
+		opts := Remote{Configs: []string{invalidConfig}}
+		if _, err := opts.authClient("registry.example", false, false); err == nil {
+			t.Fatal("authClient() error = nil, want invalid config error")
+		}
+	})
+
+	t.Run("static CLI credential defers store error to non-registry host", func(t *testing.T) {
+		want := credentials.Credential{Username: "cli-user", Password: "cli-pass"}
+		opts := Remote{
+			Username: want.Username,
+			Secret:   want.Password,
+			Configs:  []string{invalidConfig},
+		}
+		client, err := opts.authClient("registry.example", false, false)
+		if err != nil {
+			t.Fatalf("authClient() error = %v, want nil when static credential is set", err)
+		}
+		got, err := client.CredentialFunc(t.Context(), properties.Resource{Registry: "registry.example"})
+		if err != nil {
+			t.Fatalf("CredentialFunc(registry.example) error = %v", err)
+		}
+		if got != want {
+			t.Fatalf("CredentialFunc(registry.example) = %+v, want %+v", got, want)
+		}
+		if _, err := client.CredentialFunc(t.Context(), properties.Resource{Registry: "other.example"}); err == nil {
+			t.Fatal("CredentialFunc(other.example) error = nil, want deferred store error")
+		}
+	})
 }
