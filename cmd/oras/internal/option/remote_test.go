@@ -281,6 +281,89 @@ func TestRemote_authClient_SharedCacheByCredential(t *testing.T) {
 	}
 }
 
+func TestRemote_authClient_StaticCredentialCacheScope(t *testing.T) {
+	const (
+		host     = "shared.example.com"
+		cacheKey = "repository:test:pull"
+	)
+	tmp := t.TempDir()
+	configA := filepath.Join(tmp, "a.json")
+	configB := filepath.Join(tmp, "b.json")
+	withCredential := func(configs ...string) Remote {
+		return Remote{Username: "user", Secret: "password", Configs: configs}
+	}
+
+	tests := []struct {
+		name         string
+		fromRegistry string
+		from         Remote
+		toRegistry   string
+		to           Remote
+		shared       bool
+	}{
+		{
+			name:         "same target and configs",
+			fromRegistry: "registry.example.com", from: withCredential(configA),
+			toRegistry: "registry.example.com", to: withCredential(configA),
+			shared: true,
+		},
+		{
+			name:         "different target",
+			fromRegistry: "registry.example.com", from: withCredential(configA),
+			toRegistry: "other.example.com", to: withCredential(configA),
+		},
+		{
+			name:         "different configs",
+			fromRegistry: "registry.example.com", from: withCredential(configA),
+			toRegistry: "registry.example.com", to: withCredential(configB),
+		},
+		{
+			name:         "target differing only in case",
+			fromRegistry: "Registry.Example.com", from: withCredential(configA),
+			toRegistry: "registry.example.com", to: withCredential(configA),
+			shared: true,
+		},
+		{
+			name:         "docker.io alias",
+			fromRegistry: "docker.io", from: withCredential(configA),
+			toRegistry: "registry-1.docker.io", to: withCredential(configA),
+			shared: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			store := newAuthCacheStore()
+			newClient := func(t *testing.T, registry string, opts Remote) *auth.Client {
+				t.Helper()
+				opts.authCaches = store
+				client, err := opts.authClient(registry, false, false)
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				return client
+			}
+			from := newClient(t, tt.fromRegistry, tt.from)
+			if _, err := from.Cache.Set(context.Background(), host, auth.SchemeBearer, cacheKey, func(context.Context) (string, error) {
+				return "token-from", nil
+			}); err != nil {
+				t.Fatalf("unexpected error when populating cache: %v", err)
+			}
+
+			to := newClient(t, tt.toRegistry, tt.to)
+			got, err := to.Cache.GetToken(context.Background(), host, auth.SchemeBearer, cacheKey)
+			if tt.shared {
+				if err != nil || got != "token-from" {
+					t.Fatalf("expected shared cached token, got %q, err %v", got, err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("expected no cached token, got %q", got)
+			}
+		})
+	}
+}
+
 func TestRemote_authClient_SharedCacheByConfig(t *testing.T) {
 	tmp := t.TempDir()
 	configA := filepath.Join(tmp, "a.json")

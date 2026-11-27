@@ -56,21 +56,26 @@ func (remo *Remote) ensureAuthCaches(common Common) {
 	}
 }
 
-// credentialIdentity identifies the credential source of a client. Static
-// credentials are identified by the credential itself; otherwise the
-// credential store is identified by its config paths. The key is held only in
-// memory and is compared directly, so no secret is hashed or encoded.
+// credentialIdentity identifies the credential source of a client. A static
+// credential applies only to the target registry, and the credential store
+// serves every other host, so a static credential is identified together with
+// its target and the store; without one, the store alone identifies the client.
+// The key is held only in memory and is compared directly, so no secret is
+// hashed or encoded.
 type credentialIdentity struct {
 	cred    credentials.Credential
+	target  string // set only when cred is non-empty
 	configs string
 }
 
-// newCredentialIdentity returns the credential identity of a client.
-func newCredentialIdentity(cred credentials.Credential, configs []string) credentialIdentity {
+// newCredentialIdentity returns the credential identity of a client of the
+// given target registry.
+func newCredentialIdentity(cred credentials.Credential, registry string, configs []string) credentialIdentity {
+	joined := strings.Join(configs, "\x00")
 	if !cred.IsEmpty() {
-		return credentialIdentity{cred: cred}
+		return credentialIdentity{cred: cred, target: normalizeCredentialHost(registry), configs: joined}
 	}
-	return credentialIdentity{configs: strings.Join(configs, "\x00")}
+	return credentialIdentity{configs: joined}
 }
 
 const (
@@ -478,7 +483,7 @@ func (remo *Remote) authClientWithProperties(registry string, plainHTTP, debug b
 	if remo.authCaches == nil {
 		remo.authCaches = newAuthCacheStore()
 	}
-	cache := remo.authCaches.cache(newCredentialIdentity(cred, remo.Configs))
+	cache := remo.authCaches.cache(newCredentialIdentity(cred, registry, remo.Configs))
 
 	client = &auth.Client{
 		Client: &http.Client{

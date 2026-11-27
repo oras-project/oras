@@ -55,7 +55,7 @@ func TestCommonParse_ExplicitSharedAuthCache(t *testing.T) {
 		t.Fatal("expected an auth cache store")
 	}
 	const registry, scope = "registry.example.com", "repository:test:pull"
-	identity := newCredentialIdentity(credentials.Credential{Username: "user", Password: "password"}, nil)
+	identity := newCredentialIdentity(credentials.Credential{Username: "user", Password: "password"}, registry, nil)
 	if _, err := first.authCaches.cache(identity).Set(ctx, registry, auth.SchemeBearer, scope, func(context.Context) (string, error) {
 		return "cached-token", nil
 	}); err != nil {
