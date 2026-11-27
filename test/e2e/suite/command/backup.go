@@ -497,10 +497,11 @@ var _ = Describe("ORAS users:", func() {
 			backupDir := filepath.Join(GinkgoT().TempDir(), "backup-platform-round-trip")
 			ORAS("backup", "--output", backupDir, "--platform", "linux/amd64", RegistryRef(ZOTHost, ArtifactRepo, ma.Tag)).Exec()
 
-			dstRef := RegistryRef(ZOTHost, backupTestRepo("restore-platform"), ma.Tag)
-			ORAS("restore", "--input", backupDir, Flags.ExcludeReferrers, dstRef).Exec()
+			testRepo := backupTestRepo("restore-platform")
+			ORAS("restore", "--input", backupDir, Flags.ExcludeReferrers, fmt.Sprintf("%s/%s", ZOTHost, testRepo)).Exec()
 
-			restored := ORAS("manifest", "fetch", dstRef).Exec().Out.Contents()
+			// the backup records the source repository, which is restored under the target
+			restored := ORAS("manifest", "fetch", RegistryRef(ZOTHost, testRepo+"/"+ArtifactRepo, ma.Tag)).Exec().Out.Contents()
 			Expect(string(restored)).To(Equal(ma.LinuxAMD64Manifest))
 		})
 	})
