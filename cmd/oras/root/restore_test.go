@@ -403,6 +403,19 @@ func Test_restoreTargets(t *testing.T) {
 			wantErr:                true,
 		},
 		{
+			name:                   "preserve source registry that encodes to an invalid repository",
+			target:                 "harbor.local",
+			srcRefs:                []string{"registry.example.com./app:v1"}, // a trailing dot is valid in a host name
+			preserveSourceRegistry: true,
+			wantErr:                true,
+		},
+		{
+			name:    "invalid reference in the backup",
+			target:  "harbor.local",
+			srcRefs: []string{"registry.example.com:5000:6000/app:v1"},
+			wantErr: true,
+		},
+		{
 			name:    "target repository of 255 characters",
 			target:  "harbor.local/ns",
 			srcRefs: []string{"registry.example.com/" + strings.Repeat("a", 252) + ":v1"},
