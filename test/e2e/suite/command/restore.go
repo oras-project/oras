@@ -682,6 +682,28 @@ var _ = Describe("ORAS users:", func() {
 				CompareRef(srcRef, RegistryRef(ZOTHost, testRepo+"/"+srcRegistry+"/app", foobar.Tag))
 			}
 		})
+
+		It("should encode a source registry with a port with --preserve-source-registry", func() {
+			srcRef := RegistryRef(ZOTHost, ImageRepo, foobar.Tag)
+			backupDir := filepath.Join(GinkgoT().TempDir(), "backup-preserve-source-registry-port")
+			ORAS("backup", "--output", backupDir, srcRef).Exec()
+
+			testRepo := restoreTestRepo("preserve-source-registry-port")
+			dstRef := fmt.Sprintf("%s/%s", ZOTHost, testRepo)
+			// the source registry host is lowercased and its port ':' is replaced by '_'
+			encodedHost := strings.ReplaceAll(strings.ToLower(ZOTHost), ":", "_")
+			restoredRef := RegistryRef(ZOTHost, testRepo+"/"+encodedHost+"/"+ImageRepo, foobar.Tag)
+
+			ORAS("restore", "--input", backupDir, Flags.ExcludeReferrers, "--preserve-source-registry", "--dry-run", dstRef).
+				MatchKeyWords("would push tag", srcRef, restoredRef).
+				Exec()
+
+			ORAS("restore", "--input", backupDir, Flags.ExcludeReferrers, "--preserve-source-registry", dstRef).
+				MatchKeyWords("Successfully restored 1 tag(s)").
+				Exec()
+
+			CompareRef(srcRef, restoredRef)
+		})
 	})
 
 	When("handling error cases", func() {

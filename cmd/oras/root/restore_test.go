@@ -366,6 +366,66 @@ func Test_restoreTargets(t *testing.T) {
 			target:                 "harbor.local",
 			srcRefs:                []string{"localhost:5000/repo:v1"},
 			preserveSourceRegistry: true,
+			want:                   []string{"harbor.local/localhost_5000/repo"},
+		},
+		{
+			name:                   "preserve source registry with an uppercase host",
+			target:                 "harbor.local",
+			srcRefs:                []string{"Registry.Example.com/app:v1"},
+			preserveSourceRegistry: true,
+			want:                   []string{"harbor.local/registry.example.com/app"},
+		},
+		{
+			name:                   "preserve source registry with an IPv6 literal host",
+			target:                 "harbor.local",
+			srcRefs:                []string{"[::1]:5000/app:v1"},
+			preserveSourceRegistry: true,
+			wantErr:                true,
+		},
+		{
+			name:    "hosts with and without a port collide",
+			target:  "harbor.local",
+			srcRefs: []string{"localhost:5000/app:v1", "registry.example.com/app:v1"},
+			wantErr: true,
+		},
+		{
+			name:                   "hosts with and without a port with preserve source registry",
+			target:                 "harbor.local",
+			srcRefs:                []string{"localhost:5000/app:v1", "registry.example.com/app:v1"},
+			preserveSourceRegistry: true,
+			want:                   []string{"harbor.local/localhost_5000/app", "harbor.local/registry.example.com/app"},
+		},
+		{
+			name:                   "encoded host collides with a host using '_'",
+			target:                 "harbor.local",
+			srcRefs:                []string{"a:5000/app:v1", "a_5000/app:v1"},
+			preserveSourceRegistry: true,
+			wantErr:                true,
+		},
+		{
+			name:                   "preserve source registry that encodes to an invalid repository",
+			target:                 "harbor.local",
+			srcRefs:                []string{"registry.example.com./app:v1"}, // a trailing dot is valid in a host name
+			preserveSourceRegistry: true,
+			wantErr:                true,
+		},
+		{
+			name:    "invalid reference in the backup",
+			target:  "harbor.local",
+			srcRefs: []string{"registry.example.com:5000:6000/app:v1"},
+			wantErr: true,
+		},
+		{
+			name:    "target repository of 255 characters",
+			target:  "harbor.local/ns",
+			srcRefs: []string{"registry.example.com/" + strings.Repeat("a", 252) + ":v1"},
+			want:    []string{"harbor.local/ns/" + strings.Repeat("a", 252)},
+		},
+		{
+			name:                   "target repository longer than 255 characters",
+			target:                 "harbor.local/ns",
+			srcRefs:                []string{"registry.example.com/" + strings.Repeat("a", 240) + ":v1"},
+			preserveSourceRegistry: true,
 			wantErr:                true,
 		},
 		{
@@ -429,12 +489,46 @@ func Test_restoreTargets_reportsEveryCollision(t *testing.T) {
 }
 
 func Test_restoreTargets_preserveSourceRegistryWithPort(t *testing.T) {
-	_, err := restoreTargets("harbor.local", []string{"localhost:5000/repo:v1"}, true)
-	if err == nil {
-		t.Fatal("expected an error for a source registry with a port")
+	got, err := restoreTargets("harbor.local", []string{"localhost:5000/repo:v1"}, true)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !strings.Contains(err.Error(), `source registry "localhost:5000"`) || !strings.Contains(err.Error(), "has a port") {
-		t.Errorf("error = %q, want it to name the source registry and its port", err)
+	if want := []string{"harbor.local/localhost_5000/repo"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("restoreTargets() = %v, want %v", got, want)
+	}
+
+	_, err = restoreTargets("harbor.local", []string{"[::1]:5000/repo:v1"}, true)
+	if err == nil {
+		t.Fatal("expected an error for an IPv6 literal source registry")
+	}
+	if !strings.Contains(err.Error(), `IPv6 literal host "[::1]:5000"`) {
+		t.Errorf("error = %q, want it to name the IPv6 literal host", err)
+	}
+}
+
+func Test_encodeRegistryComponent(t *testing.T) {
+	tests := []struct {
+		host    string
+		want    string
+		wantErr bool
+	}{
+		{host: "docker.io", want: "docker.io"},
+		{host: "Registry.Example.com", want: "registry.example.com"},
+		{host: "registry.lan:5000", want: "registry.lan_5000"},
+		{host: "localhost:5000", want: "localhost_5000"},
+		{host: "[::1]:5000", wantErr: true},
+		{host: "[::1]", wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.host, func(t *testing.T) {
+			got, err := encodeRegistryComponent(tt.host)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("encodeRegistryComponent(%q) error = %v, wantErr %v", tt.host, err, tt.wantErr)
+			}
+			if got != tt.want {
+				t.Errorf("encodeRegistryComponent(%q) = %q, want %q", tt.host, got, tt.want)
+			}
+		})
 	}
 }
 
