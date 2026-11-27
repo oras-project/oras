@@ -105,6 +105,15 @@ var _ = Describe("ORAS beginners:", func() {
 				ExpectFailure().MatchErrKeyWords("unknown distribution specification flag").Exec()
 		})
 
+		It("should fail if given an invalid value for concurrency", func() {
+			for _, val := range []string{"0", "-1"} {
+				ORAS("attach", "--artifact-type", "oras/test", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "--concurrency", val).
+					ExpectFailure().
+					MatchErrKeyWords("Error:", "concurrency value should be at least 1").
+					Exec()
+			}
+		})
+
 		It("should fail with error suggesting subject missed", func() {
 			err := ORAS("attach", "--artifact-type", "oras/test", RegistryRef(ZOTHost, ImageRepo, "")).ExpectFailure().Exec().Err
 			Expect(err).Should(gbytes.Say("Error"))

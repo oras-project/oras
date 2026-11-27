@@ -110,9 +110,10 @@ func FindPredecessors(ctx context.Context, src oras.ReadOnlyGraphTarget, descs [
 	var predecessors []ocispec.Descriptor
 	g, ctx := errgroup.WithContext(ctx)
 	var m sync.Mutex
-	if opts.Concurrency != 0 {
-		g.SetLimit(opts.Concurrency)
+	if opts.Concurrency <= 0 {
+		opts.Concurrency = 8 // oras-go v3's default
 	}
+	g.SetLimit(opts.Concurrency)
 	if opts.FindPredecessors == nil {
 		opts.FindPredecessors = func(ctx context.Context, src content.ReadOnlyGraphStorage, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 			return src.Predecessors(ctx, desc)

@@ -47,8 +47,8 @@ type pullOptions struct {
 	option.Target
 	option.Format
 	option.Terminal
+	option.Concurrency
 
-	concurrency       int
 	KeepOldFiles      bool
 	IncludeSubject    bool
 	PathTraversal     bool
@@ -123,9 +123,9 @@ Example - Pull artifact files tagged 'example.com:v1' from an OCI image layout f
 	cmd.Flags().BoolVarP(&opts.IncludeSubject, "include-subject", "", false, "recursively pull the subject of artifacts")
 	cmd.Flags().StringVarP(&opts.Output, "output", "o", ".", "output directory")
 	cmd.Flags().StringVarP(&opts.ManifestConfigRef, "config", "", "", "output manifest config file")
-	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
 	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
+	opts.Concurrency.Concurrency = 3
 	opts.SetTypes(option.FormatTypeText, option.FormatTypeJSON, option.FormatTypeGoTemplate)
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
@@ -199,7 +199,7 @@ func runPull(cmd *cobra.Command, opts *pullOptions) (pullError error) {
 	}
 	// Copy Options
 	copyOptions := oras.DefaultCopyOptions
-	copyOptions.Concurrency = opts.concurrency
+	copyOptions.Concurrency = opts.Concurrency.Concurrency
 	if opts.Platform.Platform != nil {
 		copyOptions.WithTargetPlatform(opts.Platform.Platform)
 	}

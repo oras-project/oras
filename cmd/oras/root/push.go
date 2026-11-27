@@ -50,12 +50,12 @@ type pushOptions struct {
 	option.Target
 	option.Format
 	option.Terminal
+	option.Concurrency
 
 	extraRefs         []string
 	manifestConfigRef string
 	artifactType      string
 	force             bool
-	concurrency       int
 	// Deprecated: verbose is deprecated and will be removed in the future.
 	verbose bool
 }
@@ -188,9 +188,9 @@ Example - Push file "hi.txt" reproducibly with SOURCE_DATE_EPOCH:
 	cmd.Flags().StringVarP(&opts.manifestConfigRef, "config", "", "", "`path` of image config file")
 	cmd.Flags().StringVarP(&opts.artifactType, "artifact-type", "", "", "artifact type")
 	cmd.Flags().BoolVarP(&opts.force, "force", "", false, "force a deep traversal of the destination graph before tagging the root; useful when the destination is partially populated (e.g. by a registry cache)")
-	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
 	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
+	opts.Concurrency.Concurrency = 5
 	opts.SetTypes(option.FormatTypeText, option.FormatTypeJSON, option.FormatTypeGoTemplate)
 	option.ApplyFlags(&opts, cmd.Flags())
 	return oerrors.Command(cmd, &opts.Target)
@@ -309,7 +309,7 @@ func doPushCommand(
 		return err
 	}
 	copyOptions := oras.DefaultCopyOptions
-	copyOptions.Concurrency = opts.concurrency
+	copyOptions.Concurrency = opts.Concurrency.Concurrency
 	copyOptions.OnCopySkipped = statusHandler.OnCopySkipped
 	copyOptions.PreCopy = statusHandler.PreCopy
 	copyOptions.PostCopy = statusHandler.PostCopy
@@ -341,7 +341,7 @@ func doPushCommand(
 			return err
 		}
 		tagBytesNOpts := oras.DefaultTagBytesNOptions
-		tagBytesNOpts.Concurrency = opts.concurrency
+		tagBytesNOpts.Concurrency = opts.Concurrency.Concurrency
 		dst := listener.NewTaggedListener(opts.ExtraTagTarget(originalDst), metadataHandler.OnTagged)
 		if _, err = oras.TagBytesN(ctx, dst, root.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err

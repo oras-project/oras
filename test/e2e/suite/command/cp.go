@@ -143,6 +143,17 @@ var _ = Describe("ORAS beginners:", func() {
 			dst := RegistryRef(ZOTHost, ArtifactRepo, "")
 			ORAS("cp", src, dst, "--from-username", Username, "--from-identity-token", "test-token").ExpectFailure().Exec()
 		})
+
+		It("should fail if given an invalid value for concurrency", func() {
+			src := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
+			dst := RegistryRef(ZOTHost, cpTestRepo("invalid-concurrency"), "v1")
+			for _, val := range []string{"0", "-1"} {
+				ORAS("cp", src, dst, "--concurrency", val).
+					ExpectFailure().
+					MatchErrKeyWords("Error:", "concurrency value should be at least 1").
+					Exec()
+			}
+		})
 	})
 })
 
@@ -232,13 +243,13 @@ var _ = Describe("1.1 registry users:", func() {
 			}
 		})
 
-		It("should copy a multi-arch image and its referrers without concurrency limitation", func() {
+		It("should copy a multi-arch image and its referrers with custom concurrency level", func() {
 			stateKeys := append(ma.IndexStateKeys, ma.IndexZOTReferrerStateKey, ma.LinuxAMD64ReferrerConfigStateKey)
 			src := RegistryRef(ZOTHost, ArtifactRepo, ma.Tag)
 			dstRepo := cpTestRepo("index-referrers-concurrent")
 			dst := RegistryRef(ZOTHost, dstRepo, "copiedTag")
 			// test
-			ORAS("cp", src, dst, "-r", "--concurrency", "0").
+			ORAS("cp", src, dst, "-r", "--concurrency", "1").
 				MatchStatus(stateKeys, true, len(stateKeys)).
 				MatchKeyWords("Digest: " + ma.Digest).
 				Exec()
@@ -285,7 +296,7 @@ var _ = Describe("1.1 registry users:", func() {
 			dstRepo := cpTestRepo("empty-index")
 			dst := RegistryRef(ZOTHost, dstRepo, "copiedTag")
 			// test
-			ORAS("cp", src, dst, "-r", "--concurrency", "0").Exec()
+			ORAS("cp", src, dst, "-r", "--concurrency", "1").Exec()
 			// validate
 			CompareRef(RegistryRef(ZOTHost, ImageRepo, ma.EmptyTag), dst)
 		})

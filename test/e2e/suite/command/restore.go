@@ -84,6 +84,16 @@ var _ = Describe("ORAS beginners:", func() {
 			ORAS("restore", "--input", tmpDir, "invalid/format:v1,@sha256:123abc").ExpectFailure().
 				MatchErrKeyWords("Error:", "a tag or digest cannot be specified in the restore target").Exec()
 		})
+
+		It("should fail if given an invalid value for concurrency", func() {
+			tmpDir := GinkgoT().TempDir()
+			for _, val := range []string{"0", "-1"} {
+				ORAS("restore", "--input", tmpDir, fmt.Sprintf("%s/%s", ZOTHost, ImageRepo), "--concurrency", val).
+					ExpectFailure().
+					MatchErrKeyWords("Error:", "concurrency value should be at least 1").
+					Exec()
+			}
+		})
 	})
 })
 

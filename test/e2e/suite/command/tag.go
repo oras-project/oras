@@ -56,6 +56,15 @@ var _ = Describe("ORAS beginners:", func() {
 			ORAS("tag", "list").ExpectFailure().MatchErrKeyWords("Error:", `there is no "list" sub-command for "oras tag" command`, "repository", "oras repo tags").Exec()
 			ORAS("tag", "list", Flags.Layout).ExpectFailure().MatchErrKeyWords("Error:", `there is no "list" sub-command for "oras tag" command`, "OCI Image Layout", "oras repo tags").Exec()
 		})
+
+		It("should fail if given an invalid value for concurrency", func() {
+			for _, val := range []string{"0", "-1"} {
+				ORAS("tag", RegistryRef(ZOTHost, ImageRepo, foobar.Tag), "tagged", "--concurrency", val).
+					ExpectFailure().
+					MatchErrKeyWords("Error:", "concurrency value should be at least 1").
+					Exec()
+			}
+		})
 	})
 })
 

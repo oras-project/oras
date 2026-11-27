@@ -46,11 +46,11 @@ type pushOptions struct {
 	option.Descriptor
 	option.Pretty
 	option.Target
+	option.Concurrency
 
-	concurrency int
-	extraRefs   []string
-	fileRef     string
-	mediaType   string
+	extraRefs []string
+	fileRef   string
+	mediaType string
 	// Deprecated: verbose is deprecated and will be removed in the future.
 	verbose bool
 }
@@ -116,10 +116,10 @@ Example - Push a manifest to an OCI image layout folder 'layout-dir' and tag wit
 		},
 	}
 
+	opts.Concurrency.Concurrency = 5
 	opts.EnableDistributionSpecFlag()
 	option.ApplyFlags(&opts, cmd.Flags())
 	cmd.Flags().StringVarP(&opts.mediaType, "media-type", "", "", "media type of manifest")
-	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 5, "concurrency level")
 	cmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "print status output for unnamed blobs")
 	_ = cmd.Flags().MarkDeprecated("verbose", "and will be removed in a future release.")
 	return oerrors.Command(cmd, &opts.Target)
@@ -188,7 +188,7 @@ func doPushManifest(
 	}
 
 	tagBytesNOpts := oras.DefaultTagBytesNOptions
-	tagBytesNOpts.Concurrency = opts.concurrency
+	tagBytesNOpts.Concurrency = opts.Concurrency.Concurrency
 	extraTagTarget := opts.ExtraTagTarget(target)
 
 	// outputs manifest's descriptor

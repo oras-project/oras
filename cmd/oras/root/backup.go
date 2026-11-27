@@ -65,11 +65,11 @@ type backupOptions struct {
 	option.Remote
 	option.Terminal
 	option.Platforms
+	option.Concurrency
 
 	// flags
 	output           string
 	includeReferrers bool
-	concurrency      int
 
 	// derived options
 	outputFormat outputFormat
@@ -157,7 +157,7 @@ Example - Set custom concurrency level:
 	_ = cmd.MarkFlagRequired("output")
 	// optional flags
 	cmd.Flags().BoolVarP(&opts.includeReferrers, "include-referrers", "", false, "back up the artifact with its referrers (e.g., attestations, SBOMs)")
-	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
+	opts.Concurrency.Concurrency = 3
 	opts.FlagDescription = "back up only the manifest matching the platform"
 	opts.EnableDistributionSpecFlag()
 	// apply flags
@@ -272,7 +272,7 @@ func doBackup(
 
 	// Prepare copy options
 	copyGraphOpts := oras.DefaultCopyGraphOptions
-	copyGraphOpts.Concurrency = opts.concurrency
+	copyGraphOpts.Concurrency = opts.Concurrency.Concurrency
 	copyGraphOpts.PreCopy = statusHandler.PreCopy
 	copyGraphOpts.PostCopy = statusHandler.PostCopy
 	copyGraphOpts.OnCopySkipped = statusHandler.OnCopySkipped
