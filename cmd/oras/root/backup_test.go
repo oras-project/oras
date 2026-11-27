@@ -30,6 +30,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/opencontainers/go-digest"
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/oras-project/oras-go/v3"
@@ -39,6 +40,7 @@ import (
 	"github.com/oras-project/oras-go/v3/errdef"
 	"github.com/oras-project/oras-go/v3/registry/remote"
 	"github.com/sirupsen/logrus"
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"oras.land/oras/cmd/oras/internal/display/displaytest"
 )
 
@@ -349,6 +351,272 @@ func Test_doBackup_tagsFoundError(t *testing.T) {
 	}
 	if got, want := recorder.Snapshot(), []string{"OnTagsFound"}; !reflect.DeepEqual(got, want) {
 		t.Errorf("handler calls = %v, want %v", got, want)
+	}
+}
+
+// newBackupPlatformSource returns a source that lists its tags:
+//   - "v1": an index of a linux/amd64 and a linux/arm64 manifest
+//   - "v2": an index of the amd64 manifest only
+//   - "v3": an artifact with no platform
+//   - "v4": an index whose children have no platform
+//   - "v5": an image manifest whose config says linux/arm64
+func newBackupPlatformSource(t *testing.T) (src *oci.Store, amd64, arm64 ocispec.Descriptor) {
+	t.Helper()
+	ctx := context.Background()
+	src, err := oci.New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	pack := func(artifactType, arch string) ocispec.Descriptor {
+		desc, err := oras.PackManifest(ctx, src, oras.PackManifestVersion1_1, artifactType, oras.PackManifestOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if arch != "" {
+			desc.Platform = &ocispec.Platform{OS: "linux", Architecture: arch}
+		}
+		return desc
+	}
+	tag := func(desc ocispec.Descriptor, tag string) {
+		if err := src.Tag(ctx, desc, tag); err != nil {
+			t.Fatal(err)
+		}
+	}
+	index := func(manifests ...ocispec.Descriptor) ocispec.Descriptor {
+		indexBytes, err := json.Marshal(ocispec.Index{
+			Versioned: specs.Versioned{SchemaVersion: 2},
+			MediaType: ocispec.MediaTypeImageIndex,
+			Manifests: manifests,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		desc, err := oras.PushBytes(ctx, src, ocispec.MediaTypeImageIndex, indexBytes)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return desc
+	}
+	amd64 = pack("application/example.amd64", "amd64")
+	arm64 = pack("application/example.arm64", "arm64")
+	tag(index(amd64, arm64), "v1")
+	tag(index(amd64), "v2")
+	tag(pack("application/example.noplatform", ""), "v3")
+	tag(index(pack("application/example.part1", ""), pack("application/example.part2", "")), "v4")
+
+	configDesc, err := oras.PushBytes(ctx, src, ocispec.MediaTypeImageConfig, []byte(`{"os":"linux","architecture":"arm64"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	image, err := oras.PackManifest(ctx, src, oras.PackManifestVersion1_1, "", oras.PackManifestOptions{ConfigDescriptor: &configDesc})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tag(image, "v5")
+	return src, amd64, arm64
+}
+
+func Test_doBackup_platform(t *testing.T) {
+	ctx := context.Background()
+
+	run := func(t *testing.T, src oras.GraphTarget, opts *backupOptions, logger logrus.FieldLogger) (*oci.Store, error) {
+		t.Helper()
+		dstRoot := t.TempDir()
+		dst, err := oci.New(dstRoot)
+		if err != nil {
+			t.Fatal(err)
+		}
+		opts.output = dstRoot
+		opts.outputFormat = outputFormatDir
+		opts.repository = "example"
+		recorder := &displaytest.CallRecorder{}
+		err = doBackup(ctx, opts, logger, src, dst, dstRoot, time.Now(),
+			&displaytest.RecordingBackupStatusHandler{Recorder: recorder},
+			&displaytest.RecordingBackupMetadataHandler{Recorder: recorder})
+		return dst, err
+	}
+	platformOpts := func(platform *ocispec.Platform, tags ...string) *backupOptions {
+		opts := &backupOptions{tags: tags}
+		if platform != nil {
+			opts.Platforms.Platforms = []*ocispec.Platform{platform}
+		}
+		return opts
+	}
+	digestOf := func(t *testing.T, target oras.ReadOnlyTarget, ref string) digest.Digest {
+		t.Helper()
+		desc, err := target.Resolve(ctx, ref)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return desc.Digest
+	}
+	arm64Platform := &ocispec.Platform{OS: "linux", Architecture: "arm64"}
+	amd64Platform := &ocispec.Platform{OS: "linux", Architecture: "amd64"}
+	s390xPlatform := &ocispec.Platform{OS: "linux", Architecture: "s390x"}
+
+	t.Run("selected platform only", func(t *testing.T) {
+		src, amd64, arm64 := newBackupPlatformSource(t)
+		dst, err := run(t, src, platformOpts(arm64Platform, "v1"), logrus.New())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := digestOf(t, dst, "example:v1"); got != arm64.Digest {
+			t.Errorf("example:v1 digest = %v, want the arm64 manifest %v", got, arm64.Digest)
+		}
+		if ok, _ := dst.Exists(ctx, amd64); ok {
+			t.Error("the amd64 manifest was backed up, want only the selected platform")
+		}
+	})
+
+	t.Run("no platform backs up the whole index", func(t *testing.T) {
+		src, amd64, arm64 := newBackupPlatformSource(t)
+		dst, err := run(t, src, platformOpts(nil, "v1"), logrus.New())
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, desc := range []ocispec.Descriptor{amd64, arm64} {
+			if ok, _ := dst.Exists(ctx, desc); !ok {
+				t.Errorf("manifest %v was not backed up", desc.Digest)
+			}
+		}
+	})
+
+	t.Run("named tags without a platform are copied unchanged", func(t *testing.T) {
+		src, _, _ := newBackupPlatformSource(t)
+		dst, err := run(t, src, platformOpts(arm64Platform, "v3", "v4"), logrus.New())
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, tag := range []string{"v3", "v4"} {
+			if got, want := digestOf(t, dst, "example:"+tag), digestOf(t, src, tag); got != want {
+				t.Errorf("example:%s digest = %v, want the unchanged root %v", tag, got, want)
+			}
+		}
+	})
+
+	t.Run("image built for the platform", func(t *testing.T) {
+		src, _, _ := newBackupPlatformSource(t)
+		dst, err := run(t, src, platformOpts(arm64Platform, "v5"), logrus.New())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got, want := digestOf(t, dst, "example:v5"), digestOf(t, src, "v5"); got != want {
+			t.Errorf("example:v5 digest = %v, want %v", got, want)
+		}
+	})
+
+	t.Run("named tag built for another platform", func(t *testing.T) {
+		for _, tag := range []string{"v1", "v5"} {
+			src, _, _ := newBackupPlatformSource(t)
+			_, err := run(t, src, platformOpts(s390xPlatform, tag), logrus.New())
+			if !errors.Is(err, errdef.ErrNotFound) {
+				t.Errorf("tag %s: doBackup() error = %v, want %v", tag, err, errdef.ErrNotFound)
+			}
+		}
+	})
+
+	t.Run("all tags skips only images for other platforms", func(t *testing.T) {
+		src, _, arm64 := newBackupPlatformSource(t)
+		logger, hook := logrustest.NewNullLogger()
+		dst, err := run(t, src, platformOpts(arm64Platform), logger)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := digestOf(t, dst, "example:v1"); got != arm64.Digest {
+			t.Errorf("example:v1 digest = %v, want the arm64 manifest %v", got, arm64.Digest)
+		}
+		for _, tag := range []string{"v3", "v4", "v5"} {
+			if got, want := digestOf(t, dst, "example:"+tag), digestOf(t, src, tag); got != want {
+				t.Errorf("example:%s digest = %v, want the unchanged root %v", tag, got, want)
+			}
+		}
+		if _, err := dst.Resolve(ctx, "example:v2"); !errors.Is(err, errdef.ErrNotFound) {
+			t.Errorf("Resolve(example:v2) error = %v, want %v", err, errdef.ErrNotFound)
+		}
+		var warned []string
+		for _, entry := range hook.AllEntries() {
+			if entry.Level == logrus.WarnLevel {
+				warned = append(warned, entry.Message)
+			}
+		}
+		if len(warned) != 1 || !strings.Contains(warned[0], `"v2"`) {
+			t.Errorf("warnings = %q, want one for v2", warned)
+		}
+	})
+
+	t.Run("all tags built for other platforms", func(t *testing.T) {
+		src, _, _ := newBackupPlatformSource(t)
+		for _, tag := range []string{"v3", "v4"} {
+			if err := src.Untag(ctx, tag); err != nil {
+				t.Fatal(err)
+			}
+		}
+		logger, _ := logrustest.NewNullLogger()
+		_, err := run(t, src, platformOpts(s390xPlatform), logger)
+		if err == nil || !strings.Contains(err.Error(), "has a manifest for the requested platform") {
+			t.Fatalf("doBackup() error = %v, want no artifact matching the platform", err)
+		}
+	})
+
+	t.Run("missing config blob fails instead of skipping", func(t *testing.T) {
+		src, _, _ := newBackupPlatformSource(t)
+		missingConfig := content.NewDescriptorFromBytes(ocispec.MediaTypeImageConfig, []byte(`{"os":"linux","architecture":"amd64"}`))
+		image, err := oras.PackManifest(ctx, src, oras.PackManifestVersion1_1, "", oras.PackManifestOptions{ConfigDescriptor: &missingConfig})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := src.Tag(ctx, image, "broken"); err != nil {
+			t.Fatal(err)
+		}
+		logger, _ := logrustest.NewNullLogger()
+		_, err = run(t, src, platformOpts(amd64Platform), logger)
+		if err == nil || errors.Is(err, errPlatformMismatch) || !strings.Contains(err.Error(), `"broken"`) {
+			t.Fatalf("doBackup() error = %v, want a failure for the broken tag that is not a platform mismatch", err)
+		}
+	})
+
+	t.Run("platform with referrers", func(t *testing.T) {
+		src, amd64, arm64 := newBackupPlatformSource(t)
+		index, err := src.Resolve(ctx, "v1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		attach := func(subject ocispec.Descriptor) ocispec.Descriptor {
+			desc, err := oras.PackManifest(ctx, src, oras.PackManifestVersion1_1, "application/example.sbom", oras.PackManifestOptions{Subject: &subject})
+			if err != nil {
+				t.Fatal(err)
+			}
+			return desc
+		}
+		arm64Referrer := attach(arm64)
+		amd64Referrer := attach(amd64)
+		indexReferrer := attach(index)
+
+		opts := platformOpts(arm64Platform, "v1")
+		opts.includeReferrers = true
+		dst, err := run(t, src, opts, logrus.New())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if ok, _ := dst.Exists(ctx, arm64Referrer); !ok {
+			t.Error("the referrer of the arm64 manifest was not backed up")
+		}
+		for name, desc := range map[string]ocispec.Descriptor{"amd64 manifest": amd64Referrer, "index": indexReferrer} {
+			if ok, _ := dst.Exists(ctx, desc); ok {
+				t.Errorf("the referrer of the %s was backed up, want only the arm64 manifest's", name)
+			}
+		}
+	})
+}
+
+func Test_backupCmd_multiplePlatforms(t *testing.T) {
+	cmd := backupCmd()
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{"--output", t.TempDir(), "--platform", "linux/amd64,linux/arm64", "localhost:5000/repo:v1"})
+	err := cmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "multiple platforms are not supported yet") {
+		t.Fatalf("Execute() error = %v, want multiple platforms are not supported yet", err)
 	}
 }
 

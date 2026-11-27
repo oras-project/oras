@@ -64,6 +64,7 @@ type backupOptions struct {
 	option.Common
 	option.Remote
 	option.Terminal
+	option.Platforms
 
 	// flags
 	output           string
@@ -84,6 +85,8 @@ func backupCmd() *cobra.Command {
 		Long: `[Experimental] Back up artifacts from a registry into an OCI image layout, saved either as a directory or a tar archive.
 The output format is determined by the file extension of the specified output path: if it ends with ".tar", the output will be a tar archive; otherwise, it will be a directory.
 
+With --platform, a multi-platform image is backed up as the manifest for that platform, and an image built for another platform is left out. Artifacts without a platform, such as Helm charts and SBOMs, are copied unchanged. Referrers of a multi-platform index (e.g. signatures) and attestations inside the index are not kept.
+
 Example - Back up a single artifact to a directory:
   oras backup --output hello localhost:5000/hello:v1
 
@@ -92,6 +95,9 @@ Example - Back up to a tar archive:
 
 Example - Back up an artifact along with its referrers (e.g. attestations, SBOMs):
   oras backup --output hello --include-referrers localhost:5000/hello:v1
+
+Example - Back up only one platform of a multi-platform artifact (the stored tag points at that platform's manifest, not the index):
+  oras backup --output hello --platform linux/arm64 localhost:5000/hello:v1
 
 Example - Back up multiple specific tags:
   oras backup --output hello localhost:5000/hello:v1,v2,v3
@@ -118,6 +124,9 @@ Example - Set custom concurrency level:
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := option.Parse(cmd, &opts); err != nil {
 				return err
+			}
+			if len(opts.Platforms.Platforms) > 1 {
+				return errors.New("multiple platforms are not supported yet")
 			}
 
 			// parse repo and references
@@ -149,6 +158,7 @@ Example - Set custom concurrency level:
 	// optional flags
 	cmd.Flags().BoolVarP(&opts.includeReferrers, "include-referrers", "", false, "back up the artifact with its referrers (e.g., attestations, SBOMs)")
 	cmd.Flags().IntVarP(&opts.concurrency, "concurrency", "", 3, "concurrency level")
+	opts.FlagDescription = "back up only the manifest matching the platform"
 	opts.EnableDistributionSpecFlag()
 	// apply flags
 	option.ApplyFlags(&opts, cmd.Flags())
@@ -236,6 +246,19 @@ func doBackup(
 	tags, roots, err := resolveTags(ctx, srcRepo, opts.tags)
 	if err != nil {
 		return err
+	}
+	skipped := 0
+	if len(opts.Platforms.Platforms) == 1 {
+		tags, roots, skipped, err = selectPlatformRoots(ctx, srcRepo, tags, roots, opts.Platforms.Platforms[0], len(opts.tags) > 0, logger)
+		if err != nil {
+			return err
+		}
+	}
+	if len(tags) == 0 && skipped > 0 {
+		return &oerrors.Error{
+			Err:            fmt.Errorf("no tagged artifact in repository %q has a manifest for the requested platform", opts.repository),
+			Recommendation: "Try another platform, or remove --platform to back up every tagged artifact",
+		}
 	}
 	if len(tags) == 0 {
 		return &oerrors.Error{
@@ -416,6 +439,90 @@ func removeEmptyFile(path string, logger logrus.FieldLogger) {
 	if err := os.Remove(path); err != nil {
 		logger.Debugf("failed to remove empty output file %s: %v", path, err)
 	}
+}
+
+// errPlatformMismatch is returned for an image built only for other platforms.
+var errPlatformMismatch = fmt.Errorf("%w: no manifest for the requested platform", errdef.ErrNotFound)
+
+// selectPlatformRoots replaces each root with its manifest for platform. A listed tag
+// that is built only for other platforms is skipped with a warning; a named one fails.
+func selectPlatformRoots(ctx context.Context, src content.ReadOnlyStorage, tags []string, roots []ocispec.Descriptor, platform *ocispec.Platform, named bool, logger logrus.FieldLogger) ([]string, []ocispec.Descriptor, int, error) {
+	var keptTags []string
+	var keptRoots []ocispec.Descriptor
+	skipped := 0
+	for i, tag := range tags {
+		root, err := selectPlatform(ctx, src, roots[i], platform)
+		if err != nil {
+			if errors.Is(err, errPlatformMismatch) && !named {
+				logger.Warnf("skipping tag %q: %v", tag, err)
+				skipped++
+				continue
+			}
+			return nil, nil, 0, fmt.Errorf("failed to select the platform for tag %q: %w", tag, err)
+		}
+		keptTags = append(keptTags, tag)
+		keptRoots = append(keptRoots, root)
+	}
+	return keptTags, keptRoots, skipped, nil
+}
+
+// selectPlatform returns the manifest for platform from a multi-platform index, or the
+// image itself if it was built for platform. Anything without a platform is returned as is.
+func selectPlatform(ctx context.Context, src content.ReadOnlyStorage, root ocispec.Descriptor, platform *ocispec.Platform) (ocispec.Descriptor, error) {
+	switch root.MediaType {
+	case ocispec.MediaTypeImageIndex, docker.MediaTypeManifestList:
+		var index ocispec.Index
+		if err := fetchJSON(ctx, src, root, &index); err != nil {
+			return ocispec.Descriptor{}, err
+		}
+		hasPlatform := false
+		for _, m := range index.Manifests {
+			if m.Platform == nil {
+				continue
+			}
+			hasPlatform = true
+			if platformMatches(m.Platform, platform) {
+				return m, nil
+			}
+		}
+		if !hasPlatform {
+			return root, nil
+		}
+		return ocispec.Descriptor{}, errPlatformMismatch
+	case ocispec.MediaTypeImageManifest, docker.MediaTypeManifest:
+		var manifest ocispec.Manifest
+		if err := fetchJSON(ctx, src, root, &manifest); err != nil {
+			return ocispec.Descriptor{}, err
+		}
+		if manifest.Config.MediaType != ocispec.MediaTypeImageConfig && manifest.Config.MediaType != docker.MediaTypeConfig {
+			return root, nil
+		}
+		var config ocispec.Platform
+		if err := fetchJSON(ctx, src, manifest.Config, &config); err != nil {
+			return ocispec.Descriptor{}, err
+		}
+		if config.OS == "" && config.Architecture == "" {
+			return root, nil
+		}
+		if platformMatches(&config, platform) {
+			return root, nil
+		}
+		return ocispec.Descriptor{}, errPlatformMismatch
+	default:
+		return root, nil
+	}
+}
+
+// fetchJSON fetches desc from src and decodes it into v.
+func fetchJSON(ctx context.Context, src content.ReadOnlyStorage, desc ocispec.Descriptor, v any) error {
+	data, err := content.FetchAll(ctx, src, desc)
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal(data, v); err != nil {
+		return fmt.Errorf("failed to parse %s %s: %w", desc.MediaType, desc.Digest, err)
+	}
+	return nil
 }
 
 // resolveTags resolves tags to their descriptors.

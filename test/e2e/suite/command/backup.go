@@ -415,6 +415,96 @@ var _ = Describe("ORAS users:", func() {
 		})
 	})
 
+	When("backing up with --platform", func() {
+		maArm64Digest := ma.LinuxARM64.Digest.String()
+
+		It("should back up only the matching manifest of a multi-arch artifact", func() {
+			outDir := filepath.Join(GinkgoT().TempDir(), "backup-platform")
+			srcRef := RegistryRef(ZOTHost, ArtifactRepo, ma.Tag)
+
+			ORAS("backup", "--output", outDir, "--platform", "linux/amd64", srcRef).
+				MatchKeyWords("Successfully backed up 1 tag(s)").
+				Exec()
+
+			verifyBackupDirectoryStructure(outDir)
+			// the stored tag points at the linux/amd64 manifest, not the index
+			stored := ORAS("manifest", "fetch", ociLayoutPath, outDir, srcRef).Exec().Out.Contents()
+			Expect(string(stored)).To(Equal(ma.LinuxAMD64Manifest))
+			ORAS("manifest", "fetch", ociLayoutPath, outDir, ma.Digest).ExpectFailure().Exec()
+		})
+
+		It("should back up the referrers of the matching manifest only", func() {
+			outDir := filepath.Join(GinkgoT().TempDir(), "backup-platform-referrers")
+			srcRef := RegistryRef(ZOTHost, ArtifactRepo, ma.Tag)
+
+			ORAS("backup", "--output", outDir, "--platform", "linux/amd64", Flags.IncludeReferrers, srcRef).
+				MatchKeyWords("Successfully backed up 1 tag(s)").
+				Exec()
+
+			verifyBackupDirectoryStructure(outDir)
+			compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, ma.LinuxAMD64Referrer.Digest.String()), outDir, ma.LinuxAMD64Referrer.Digest.String())
+			// referrers of the index are not kept
+			ORAS("manifest", "fetch", ociLayoutPath, outDir, ma.IndexReferrerDigest).ExpectFailure().Exec()
+		})
+
+		It("should fail when a named tag has no manifest for the platform", func() {
+			outDir := filepath.Join(GinkgoT().TempDir(), "backup-platform-mismatch")
+			srcRef := RegistryRef(ZOTHost, ArtifactRepo, ma.Tag)
+
+			ORAS("backup", "--output", outDir, "--platform", "linux/s390x", srcRef).
+				ExpectFailure().
+				MatchErrKeyWords("no manifest for the requested platform").
+				Exec()
+		})
+
+		It("should back up an artifact without a platform in full", func() {
+			outDir := filepath.Join(GinkgoT().TempDir(), "backup-platform-artifact")
+			srcRef := RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag)
+
+			ORAS("backup", "--output", outDir, "--platform", "linux/amd64", srcRef).
+				MatchKeyWords("Successfully backed up 1 tag(s)").
+				Exec()
+
+			verifyBackupDirectoryStructure(outDir)
+			compareBackupRef(srcRef, outDir, srcRef)
+		})
+
+		It("should back up a whole repository with images and artifacts", func() {
+			testRepo := backupTestRepo("backup-platform-repo")
+			for _, tag := range []string{foobar.Tag, ma.Tag} {
+				prepare(RegistryRef(ZOTHost, ArtifactRepo, tag), RegistryRef(ZOTHost, testRepo, tag))
+			}
+			srcRepo := fmt.Sprintf("%s/%s", ZOTHost, testRepo)
+
+			By("keeping the matching manifest of the image and the artifact in full")
+			outDir := filepath.Join(GinkgoT().TempDir(), "backup-platform-repo")
+			ORAS("backup", "--output", outDir, "--platform", "linux/arm64", srcRepo).
+				MatchKeyWords("Successfully backed up 2 tag(s)").
+				Exec()
+			compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag), outDir, RegistryRef(ZOTHost, testRepo, foobar.Tag))
+			compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, maArm64Digest), outDir, RegistryRef(ZOTHost, testRepo, ma.Tag))
+
+			By("skipping the image when it has no manifest for the platform")
+			outDir = filepath.Join(GinkgoT().TempDir(), "backup-platform-repo-skip")
+			ORAS("backup", "--output", outDir, "--platform", "linux/s390x", srcRepo).
+				MatchKeyWords("Successfully backed up 1 tag(s)").
+				MatchErrKeyWords("skipping tag", ma.Tag).
+				Exec()
+			compareBackupRef(RegistryRef(ZOTHost, ArtifactRepo, foobar.Tag), outDir, RegistryRef(ZOTHost, testRepo, foobar.Tag))
+		})
+
+		It("should restore what it backed up", func() {
+			backupDir := filepath.Join(GinkgoT().TempDir(), "backup-platform-round-trip")
+			ORAS("backup", "--output", backupDir, "--platform", "linux/amd64", RegistryRef(ZOTHost, ArtifactRepo, ma.Tag)).Exec()
+
+			dstRef := RegistryRef(ZOTHost, backupTestRepo("restore-platform"), ma.Tag)
+			ORAS("restore", "--input", backupDir, Flags.ExcludeReferrers, dstRef).Exec()
+
+			restored := ORAS("manifest", "fetch", dstRef).Exec().Out.Contents()
+			Expect(string(restored)).To(Equal(ma.LinuxAMD64Manifest))
+		})
+	})
+
 	When("using --distribution-spec flag", func() {
 		It("should backup using referrers API with --distribution-spec v1.1-referrers-api", func() {
 			tmpDir := GinkgoT().TempDir()
