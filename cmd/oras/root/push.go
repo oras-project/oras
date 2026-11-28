@@ -549,7 +549,7 @@ func runPushRecursive(cmd *cobra.Command, opts *pushOptions) error {
 
 	// Copy options
 	copyOptions := oras.DefaultCopyOptions
-	copyOptions.Concurrency = opts.concurrency
+	copyOptions.Concurrency = opts.Concurrency.Concurrency
 	copyOptions.OnCopySkipped = statusHandler.OnCopySkipped
 	copyOptions.PreCopy = statusHandler.PreCopy
 	copyOptions.PostCopy = statusHandler.PostCopy
@@ -580,7 +580,7 @@ func runPushRecursive(cmd *cobra.Command, opts *pushOptions) error {
 			return err
 		}
 		tagBytesNOpts := oras.DefaultTagBytesNOptions
-		tagBytesNOpts.Concurrency = opts.concurrency
+		tagBytesNOpts.Concurrency = opts.Concurrency.Concurrency
 		tagDst := listener.NewTagListener(originalDst, nil, metadataHandler.OnTagged)
 		if _, err = oras.TagBytesN(ctx, tagDst, result.Root.MediaType, contentBytes, opts.extraRefs, tagBytesNOpts); err != nil {
 			return err
