@@ -2,24 +2,24 @@
 
 ## Overview
 
-Building upon the single-repository backup and restore functionality, this proposal extends `oras backup` and `oras restore` to support multi-repository operations within a single registry. This enhancement enables users to backup artifacts from multiple repositories in the same registry into a single OCI image layout, and restore them to one or more target registries with flexible repository mapping capabilities.
+Building upon the single-repository backup and restore functionality, this proposal extends `oras backup` and `oras restore` to support multi-repository operations across one or more registries. This enhancement enables users to backup artifacts from multiple repositories, in the same registry or in different registries, into a single OCI image layout, and restore them to one or more target registries with flexible repository mapping capabilities.
 
 Multi-repository support addresses enterprise scenarios where users need to:
-- Create unified backups spanning multiple related repositories (e.g., all microservices for an application in the same registry)
+- Create unified backups spanning multiple related repositories (e.g., all microservices for an application)
+- Package artifacts from several registries (e.g., Docker Hub, GHCR and a private registry) into one archive for air-gapped transfer ([#1893](https://github.com/oras-project/oras/issues/1893))
 - Migrate selected repositories between environments
 - Reorganize repository structures during restoration (e.g., consolidating scattered repos, changing naming conventions)
 - Backup specific sets of repositories for disaster recovery
 
-> [!NOTE]
-> For backing up artifacts from multiple registries, it is recommended to create separate backups for each registry. This simplifies authentication handling and allows registry-specific configuration flags to be used.
+Every backup records the full reference (`<registry>/<repository>:<tag>`) of each artifact, so a backup always says where its contents came from. See [Backup Format and Annotations](#backup-format-and-annotations).
 
 **Out of Scope:** Backing up an entire registry (all repositories) is not supported. For registry-wide backup and replication, use registry-native features (e.g., Harbor replication, ACR geo-replication) or vendor-specific backup tools. Multi-repository backup should be used for intentional, bounded operations where users specify exactly which repositories to backup.
 
-This proposal maintains full backward compatibility with single-repository operations while introducing intuitive, human-centric syntax for multi-repository workflows.
+This proposal keeps existing `oras backup` command lines working, except those that use a removed registry flag, and keeps earlier backups restorable, while introducing intuitive, human-centric syntax for multi-repository workflows. `oras restore` changes how its target argument is interpreted (see [Backward Compatibility](#backward-compatibility)).
 
 ## Design Principles
 
-1. **Backward Compatibility**: All existing single-repository commands continue to work unchanged
+1. **Backward Compatibility**: Existing `oras backup` command lines continue to work unless they use a removed registry flag (see [Removed Flags](#removed-flags)), and backups created by earlier versions can still be restored (see [Backward Compatibility](#backward-compatibility))
 2. **Progressive Disclosure**: Simple cases remain simple; complexity is introduced only when needed
 3. **Consistency**: Multi-repository syntax follows established patterns from single-repository design
 4. **Flexibility**: Support for repository mapping and restructuring during restore
@@ -29,11 +29,11 @@ This proposal maintains full backward compatibility with single-repository opera
 
 ### Basic Syntax
 
-Multi-repository backup accepts multiple repository references from the same registry, allowing users to backup artifacts from different repositories into a single OCI layout.
+Multi-repository backup accepts multiple repository references, from one or more registries, allowing users to backup artifacts from different repositories into a single OCI layout.
 
 **Syntax:**
 ```bash
-oras backup [flags] --output <path> <registry>/<repo1>[:<tags>] <registry>/<repo2>[:<tags>] ...
+oras backup [flags] --output <path> <registry1>/<repo1>[:<tags>] <registry2>/<repo2>[:<tags>] ...
 ```
 
 Where each repository reference follows the format:
@@ -41,16 +41,17 @@ Where each repository reference follows the format:
 <registry>/<repository>[:<tag1>[,<tag2>...]]
 ```
 
-**Important:** All repository references must be from the same registry. For backing up from multiple registries, create separate backups for each registry.
+References may point to different registries. See [Authentication Handling](#authentication-handling) for how credentials and connection settings are configured for each registry.
 
 ### Behavior
 
-- **Same registry**: All repository references must be from the same registry
+- **Multiple registries**: Repository references may come from different registries
+- **Full references**: Every tag is recorded in `index.json` as `<registry>/<repository>:<tag>`, so repositories with the same path on different registries do not collide in the backup
 - **All tags**: If no tags specified for a repository, all tags in that repository are backed up
 - **Selective tags**: Tags can be specified per repository using comma-separated list
-- **Deduplication**: Blobs are deduplicated across all repositories in the backup
+- **Deduplication**: Blobs are deduplicated across all repositories and registries in the backup
 - **Referrers**: When `--include-referrers` is used, referrers for all specified artifacts are included
-- **Registry-specific flags**: All registry-related flags (authentication, TLS, etc.) apply to the single target registry
+- **No global registry flags**: Credential, TLS, header and distribution-spec flags are removed, because one value cannot say which registry it applies to. Credentials and connection settings come from per-registry configuration (see [Authentication Handling](#authentication-handling))
 
 ### Examples
 
@@ -130,6 +131,40 @@ Exported to versioned-bases.tar (98.5 MB)
 Successfully backed up 5 tag(s) from 3 repository(ies) in 1m 15s.
 ```
 
+#### Example 3: Backup from Multiple Registries
+
+Backup an application's dependencies from Docker Hub, GHCR and a private registry into one archive:
+
+```bash
+oras backup --output app-deps.tar \
+  docker.io/library/nginx:1.25-alpine \
+  docker.io/library/redis:7.2-alpine \
+  ghcr.io/oras-project/oras:v1.1.0 \
+  registry.mycompany.com/apps/frontend:v2.0
+```
+
+**Output:**
+```console
+Found 4 repository(ies) from 3 registry(ies) with 4 tag(s):
+  docker.io
+    - library/nginx: 1.25-alpine
+    - library/redis: 7.2-alpine
+  ghcr.io
+    - oras-project/oras: v1.1.0
+  registry.mycompany.com
+    - apps/frontend: v2.0
+
+Backing up artifacts...
+✓ Pulled docker.io/library/nginx:1.25-alpine with 0 referrer(s)
+✓ Pulled docker.io/library/redis:7.2-alpine with 0 referrer(s)
+✓ Pulled ghcr.io/oras-project/oras:v1.1.0 with 0 referrer(s)
+✓ Pulled registry.mycompany.com/apps/frontend:v2.0 with 0 referrer(s)
+
+Exporting to app-deps.tar
+Exported to app-deps.tar (87.3 MB)
+Successfully backed up 4 tag(s) from 4 repository(ies) across 3 registry(ies) in 48s.
+```
+
 ## Multi-Repository Restore
 
 ### Basic Syntax
@@ -138,12 +173,12 @@ Multi-repository restore supports several modes to accommodate different use cas
 
 **Mode 1: Direct Restore (Same Structure)**
 ```bash
-oras restore [flags] --input <path> <target-registry>
+oras restore [flags] --input <path> <target-registry>[/<namespace>]
 ```
 
 **Mode 2: Selective Restore**
 ```bash
-oras restore [flags] --input <path> <target-repo1> <target-repo2> [<target-repo3>...]
+oras restore [flags] --input <path> --include <pattern> [--include <pattern>...] <target-registry>[/<namespace>]
 ```
 
 **Mode 3: Restore with Rules**
@@ -153,11 +188,14 @@ oras restore [flags] --input <path> --rules <rules-file>
 
 ### Behavior
 
-- **All repositories**: If only target registry specified, all repositories from backup are restored to that registry
-- **Selective repositories**: Specific repository destinations can be provided
+- **All repositories**: If only a target registry (optionally with a namespace) is specified, all repositories from the backup are restored under it
+- **Target only**: The positional argument says only where artifacts go. It never carries a tag or digest; `oras restore --input backup.tar registry.mycompany.com/mirror:v1` is rejected, because `:v1` would read as a destination tag
+- **Selective repositories and tags**: What to restore is chosen with `--include` patterns that match the source references in the backup, never with the target argument
 - **Repository mapping**: Complex mappings via rules file
-- **Name preservation**: By default, repository and tag names from backup are preserved
+- **Name preservation**: By default, repository paths and tags from the backup are preserved; only the source registry host is replaced by the target
 - **Flexible targets**: Can restore to different registries than original backup source
+- **Consistent targets**: A single positional argument is always `<target-registry>[/<namespace>]`, however many repositories the backup holds. A backup containing only `docker.io/library/redis` restores to `<target>/library/redis`, the same place it would go in a multi-repository backup. To restore under a different repository name, use a rules file (Mode 3); simpler renaming may be added later
+- **Collision detection**: Before anything is pushed, restore checks that no two source repositories map to the same target repository (see [Restoring Backups from Multiple Registries](#restoring-backups-from-multiple-registries))
 
 ### Restore Modes
 
@@ -198,20 +236,51 @@ Restored registry.mycompany.com/library/nginx:1.25-alpine with 0 referrer(s)
 Successfully restored 3 tag(s) from 3 repository(ies) to registry.mycompany.com in 28s.
 ```
 
+A namespace can be added to the target, in which case repository paths are placed under it:
+
+```bash
+oras restore --input base-images.tar registry.mycompany.com/mirror
+```
+
+- `docker.io/library/busybox` → `registry.mycompany.com/mirror/library/busybox`
+
 #### Mode 2: Selective Repository Restore
 
-Restore only specific repositories from backup. Specify target repositories to filter which ones to restore. Repository paths from the backup are preserved.
+Restore only some of the artifacts in a backup. `--include` selects artifacts by their **source** reference, and the positional argument is the same `<target-registry>[/<namespace>]` as in Mode 1. Selection and destination are kept apart, so a selector is never mistaken for a destination.
 
 ```bash
 oras restore --input base-images.tar \
-  registry.mycompany.com/library/alpine \
-  registry.mycompany.com/library/busybox
+  --include library/alpine \
+  --include library/busybox \
+  registry.mycompany.com
 ```
 
+**Pattern syntax:** `[<registry>/]<repository>[:<tag>]`
+
+- A pattern is split into a repository part and a tag part at the last `:` that comes after the last `/`. A `:` before the last `/` belongs to a registry port, so `registry.lan:5000/app` has no tag part and `registry.lan:5000/app:v1` has the tag part `v1`
+- The repository part matches a stored `<registry>/<repository>` either in full or without its registry, so the registry is optional
+- The tag part matches the stored tag. Without a tag part, every tag of the matching repositories is selected
+- `*` matches any sequence of characters, including `/`, within the part it appears in. Because the parts are split first, `*` never crosses from the repository into the tag: `library/alpine*` matches `library/alpine` and `library/alpine-edge`, with all their tags, and `library/alpine:3.*` matches tags of `library/alpine` starting with `3.`
+- Patterns are compared literally against the stored references. Docker Hub short names are not expanded, so `alpine` does not match `docker.io/library/alpine`; use `library/alpine`. When a pattern matches nothing, the error lists stored repositories whose last path component equals the pattern's, e.g. "did you mean `library/alpine`?"
+
+| Pattern | Selects |
+|---|---|
+| `library/alpine` | every tag of `library/alpine`, from any source registry |
+| `docker.io/library/alpine` | every tag of `library/alpine` from `docker.io` only |
+| `library/alpine:3.19.0` | one tag |
+| `*:v1` | tag `v1` in every repository |
+| `library/*` | every repository under `library/` |
+| `library/alpine:3.*` | tags of `library/alpine` starting with `3.` |
+| `registry.lan:5000/app` | every tag of `app` from `registry.lan:5000` |
+
 **Behavior:**
-- Filters repositories from backup based on command-line targets
-- Repository structure is **preserved** (e.g., `docker.io/library/alpine` → `registry.mycompany.com/library/alpine`)
-- Only the registry hostname changes, paths remain the same
+- `--include` can be repeated; an artifact is restored if it matches any pattern
+- A pattern that matches nothing fails before anything is pushed, so typos are not silently ignored
+- Selected artifacts are mapped exactly as in Mode 1: repository paths are **preserved** under the target (e.g., `docker.io/library/alpine` → `registry.mycompany.com/library/alpine`), and `--preserve-source-registry` applies
+- If a pattern selects the same path under more than one source registry (e.g., `docker.io/library/nginx` and `mirror.gcr.io/library/nginx`), the usual [collision check](#collisions) applies. Add the registry to the pattern, use `--preserve-source-registry`, or use a rules file (Mode 3)
+- Tag-only entries from backups created by earlier versions have no recorded registry or repository. Only patterns whose repository part is exactly `*` match them, with the tag part applied as usual (e.g., `*:v1`, or `*` for every tag). A pattern that names a repository, such as `library/alpine:v1`, never matches a tag-only entry, so it cannot select tags from an unrelated repository; if it matches nothing else, it fails as an unmatched pattern
+- `--include` cannot be combined with `--rules`, whose mappings select their own sources and tags
+- An `--exclude` flag with the same syntax may be added later
 
 **Output:**
 ```console
@@ -238,7 +307,7 @@ For **advanced scenarios** requiring repository renaming or restructuring, use a
 
 > [!IMPORTANT]
 > The `--rules` flag cannot be used together with positional repository arguments. Use either:
-> - Positional args for direct/selective restore (Mode 1 & 2)
+> - A positional target for direct/selective restore (Mode 1 & 2)
 > - Rules file for complex remapping scenarios (Mode 3)
 
 **Rules File (`restore-rules.json`):**
@@ -285,14 +354,70 @@ Restoring with mappings...
 Successfully restored 3 tag(s) from 3 repository(ies) with remapping in 22s.
 ```
 
+### Restoring Backups from Multiple Registries
+
+When a backup contains repositories from more than one registry, Mode 1 and Mode 2 drop each source registry host and keep the repository path:
+
+```bash
+oras restore --input app-deps.tar airgap.internal.company
+```
+
+- `docker.io/library/nginx` → `airgap.internal.company/library/nginx`
+- `ghcr.io/oras-project/oras` → `airgap.internal.company/oras-project/oras`
+- `registry.mycompany.com/apps/frontend` → `airgap.internal.company/apps/frontend`
+
+Docker Hub repositories keep their `library/` prefix; restore does not apply Docker Hub's short-name normalization to target names.
+
+#### Collisions
+
+Dropping the source registry can map two source repositories to the same target, for example `docker.io/library/nginx` and `mirror.gcr.io/library/nginx`. Restore detects this before pushing anything and fails:
+
+```console
+Error: 2 source repositories map to the same target repository:
+  docker.io/library/nginx     → airgap.internal.company/library/nginx
+  mirror.gcr.io/library/nginx → airgap.internal.company/library/nginx
+
+Recommendations:
+  1. Use --preserve-source-registry to keep the source registry in the target path
+  2. Use --rules to map each source repository to a distinct target
+```
+
+#### Keeping the Source Registry in the Target Path
+
+`--preserve-source-registry` keeps the source registry host as the first path component of each target repository, which avoids collisions:
+
+```bash
+oras restore --input app-deps.tar --preserve-source-registry airgap.internal.company
+```
+
+- `docker.io/library/nginx` → `airgap.internal.company/docker.io/library/nginx`
+- `ghcr.io/oras-project/oras` → `airgap.internal.company/ghcr.io/oras-project/oras`
+
+The source host is turned into a valid repository path component:
+
+- The host is lowercased, since host names are case-insensitive but repository names must be lowercase.
+- A port separator `:` is replaced by `_`, e.g. `registry.lan:5000/app` → `airgap.internal.company/registry.lan_5000/app`. Host names cannot contain `_`, so this cannot collide with another host.
+- An IPv6 literal host (e.g. `[::1]:5000`) cannot be encoded and fails before anything is pushed; use a rules file (Mode 3) for those repositories.
+
+The resulting target repository, including any namespace and the encoded host, must stay within the distribution-spec limit of 255 characters; a longer name fails before anything is pushed.
+
+The flag applies to Mode 1 and Mode 2. It cannot be combined with `--rules`, where targets are given in full.
+
 ### Selective Tag Restoration
 
-Restore specific tags from specific repositories:
+Restore specific tags from specific repositories with `--include` (Mode 2):
 
 ```bash
 oras restore --input base-images.tar \
-  registry.mycompany.com/base/alpine:3.19.0 \
-  registry.mycompany.com/base/busybox:1.36.1
+  --include library/alpine:3.19.0 \
+  --include library/busybox:1.36.1 \
+  registry.mycompany.com
+```
+
+Restore one tag from every repository in the backup:
+
+```bash
+oras restore --input base-images.tar --include '*:v1' registry.mycompany.com
 ```
 
 **Output:**
@@ -300,8 +425,8 @@ oras restore --input base-images.tar \
 Loaded backup archive: base-images.tar (42.8 MB)
 Restoring selected tags from 2 repository(ies)
 
-✓ Restored registry.mycompany.com/base/alpine:3.19.0 with 0 referrer(s)
-✓ Restored registry.mycompany.com/base/busybox:1.36.1 with 0 referrer(s)
+✓ Restored registry.mycompany.com/library/alpine:3.19.0 with 0 referrer(s)
+✓ Restored registry.mycompany.com/library/busybox:1.36.1 with 0 referrer(s)
 
 Successfully restored 2 tag(s) from 2 repository(ies) in 10s.
 ```
@@ -322,13 +447,13 @@ Found 3 repository(ies) with 3 tag(s)
 [DRY RUN] The following operations would be performed:
 
 Registry: registry.mycompany.com
-  Repository: library/busybox
+  Repository: library/busybox (from docker.io/library/busybox)
     ✓ 1.36.1 (sha256:355b3a1...) + 0 referrer(s)
   
-  Repository: library/alpine
+  Repository: library/alpine (from docker.io/library/alpine)
     ✓ 3.19.0 (sha256:51b6726...) + 0 referrer(s)
   
-  Repository: library/nginx
+  Repository: library/nginx (from docker.io/library/nginx)
     ✓ 1.25-alpine (sha256:a5660da...) + 0 referrer(s)
 
 [DRY RUN] Would restore 3 tag(s) from 3 repository(ies)
@@ -337,6 +462,8 @@ Registry: registry.mycompany.com
 
 No changes were made. Remove --dry-run to perform actual restore.
 ```
+
+Dry-run also reports [collisions](#collisions), [tag conflicts](#rules-file-format) from rules files, invalid target names and unmatched `--include` patterns, so a mapping can be checked before any push. Dry-run runs every check that a real restore runs before pushing, and exits with an error if any of them fails.
 
 ## Inspecting Backup Contents
 
@@ -394,64 +521,43 @@ oras manifest fetch --oci-layout-path base-images.tar docker.io/library/busybox:
 oras discover --oci-layout-path base-images.tar docker.io/library/busybox:1.36.1
 ```
 
-**Note:** All ORAS commands supporting `--oci-layout-path` can inspect backup contents with repository paths.
+**Note:** All ORAS commands supporting `--oci-layout-path` can inspect backup contents with repository paths. Repositories from different registries are listed with their own registry host.
+
+> [!IMPORTANT]
+> Use `--oci-layout-path <path> <reference>` to address artifacts in a backup. The `--oci-layout <path>:<tag>` form splits on the last `:`, so it cannot address a full reference such as `docker.io/library/alpine:latest`, and `--oci-layout backup:latest` no longer resolves because no entry is stored under the bare tag.
 
 ## Dependencies
 
 This proposal depends on the following:
 
 - **[#1770](https://github.com/oras-project/oras/issues/1770)**: Support `oras repo ls --oci-layout-path` for listing repositories in OCI Image Layout backups.
+- **[#2380](https://github.com/oras-project/oras/issues/2380)**: Remove the global registry flags from `oras backup` and `oras restore`, and provide the per-registry replacements listed in [Prerequisites](#prerequisites).
+
+No oras-go change is needed for multi-registry backup. oras-go already resolves credentials per host (`auth.CredentialFunc` takes the `hostport`, and the credential store is keyed by host), so one command can talk to several registries, each with its own credentials. The single-registry limit came from the CLI applying one set of registry flags to every reference, which #2380 removes.
 
 ## Backup Format and Annotations
 
-Multi-repository backups are stored in standard OCI Image Layout format with full reference information preserved in annotations.
+Backups are stored in standard OCI Image Layout format with full reference information preserved in annotations.
 
 ### Reference Annotation (`org.opencontainers.image.ref.name`)
 
-The `org.opencontainers.image.ref.name` annotation in `index.json` stores the artifact reference:
-
-- **Default behavior (backward compatible)**: Contains just the tag (e.g., `"latest"`)
-- **With `--full-reference` flag**: Contains the full reference (e.g., `"docker.io/library/alpine:latest"`)
-- **Multi-repository backup**: Always uses full reference regardless of flag
-
-#### The `--full-reference` Flag
-
-The `--full-reference` flag can be used with single-repository backups to store the complete reference path:
-
-```bash
-oras backup --output backup.tar --full-reference docker.io/library/alpine:latest
-```
+The `org.opencontainers.image.ref.name` annotation in `index.json` always stores the full reference of the artifact, `<registry>/<repository>:<tag>` (e.g., `"docker.io/library/alpine:latest"`). This applies to single-repository, multi-repository and multi-registry backups alike. There is no tag-only mode and no flag to select one.
 
 This approach:
 - Aligns with the [OCI Image Spec](https://github.com/opencontainers/image-spec/blob/v1.1.1/annotations.md#pre-defined-annotation-keys), which allows both tag-only and full reference formats in `org.opencontainers.image.ref.name`
 - Enables automation tools (e.g., air-gap packaging tools like [Zarf](https://github.com/zarf-dev/zarf)) to programmatically determine the original location of backed-up artifacts
 - Addresses use cases described in [#1893](https://github.com/oras-project/oras/issues/1893)
-- **Multi-repository backups always use full references** to disambiguate artifacts from different repositories
+- Disambiguates artifacts from different repositories and registries
+- Keeps one backup format, so tools reading backups do not need to handle two layouts for new backups
+
+The value is not limited in length by the OCI Image Spec. In practice it is bounded by the distribution-spec limits on its parts: 255 characters for the registry and repository name and 128 characters for a tag.
 
 > [!WARNING]
-> Backups created with `--full-reference` are **not compatible** with ORAS CLI versions prior to v1.4.0 or tools that expect tag-only references in `org.opencontainers.image.ref.name`. Use this flag only when you need full reference information for automation or multi-repository scenarios.
+> Backups created by this version **cannot be restored** by earlier ORAS CLI versions, which treat the annotation value as a tag. Because `oras backup` and `oras restore` are experimental, this format change is made without an opt-in flag.
 
 **Example `index.json` formats:**
 
-**Default single-repository backup (tag-only):**
-```json
-{
-  "schemaVersion": 2,
-  "mediaType": "application/vnd.oci.image.index.v1+json",
-  "manifests": [
-    {
-      "mediaType": "application/vnd.oci.image.index.v1+json",
-      "digest": "sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412",
-      "size": 9218,
-      "annotations": {
-        "org.opencontainers.image.ref.name": "latest"
-      }
-    }
-  ]
-}
-```
-
-**Single-repository backup with `--full-reference`:**
+**Single-repository backup:**
 ```json
 {
   "schemaVersion": 2,
@@ -469,7 +575,7 @@ This approach:
 }
 ```
 
-**Multi-repository backup (always uses full references):**
+**Multi-registry backup:**
 
 ```json
 {
@@ -489,31 +595,32 @@ This approach:
       "digest": "sha256:355b3a1c6b8f2c7f0a1b5e8c3d9f1e2a4b6c8d0e2f4a6b8c0e2f4a6b8c0e2f4a",
       "size": 7892,
       "annotations": {
-        "org.opencontainers.image.ref.name": "docker.io/library/busybox:1.36.1"
+        "org.opencontainers.image.ref.name": "ghcr.io/oras-project/oras:v1.1.0"
       }
     }
   ]
 }
 ```
 
-#### Restore Behavior with Full References
+#### Restore Behavior
 
-The `oras restore` command automatically detects the reference format in `org.opencontainers.image.ref.name`:
+`oras restore` parses each `org.opencontainers.image.ref.name` value with the ORAS reference parser:
 
-- **Tag-only format** (e.g., `"latest"`): Matches against the tag portion of the restore target
-- **Full reference format** (e.g., `"docker.io/library/alpine:latest"`): Automatically extracts and matches the tag, then remaps to the restore target
+- **Full reference** (all backups created by this version, e.g., `"docker.io/library/alpine:latest"`): The registry, repository and tag are extracted. The registry and repository identify the source for mapping; the tag is used as the destination tag.
+- **Tag-only** (backups created by earlier versions, e.g., `"latest"`): Treated as a tag in a single repository with no recorded source. There is no repository path to keep, so the positional argument is the target repository, as today. Because a tag-only entry has no repository, the target must include one: `oras restore --input old-backup.tar target.com` fails before anything is pushed with an error asking for a target repository such as `target.com/myrepo`.
 
-**Example - Single-repo backup with full reference:**
+**Example:**
 ```bash
-# Backup with full reference
-oras backup --output backup.tar --full-reference docker.io/library/alpine:latest
+oras backup --output backup.tar docker.io/library/alpine:latest
 
-# Restore to different registry (auto-remaps)
-oras restore --input backup.tar registry.mycompany.com/alpine:latest
-# Result: docker.io/library/alpine:latest → registry.mycompany.com/alpine:latest
+# Restore to a different registry; the repository path is kept
+oras restore --input backup.tar registry.mycompany.com
+# Result: docker.io/library/alpine:latest → registry.mycompany.com/library/alpine:latest
+
+# Restore under a namespace
+oras restore --input backup.tar registry.mycompany.com/mirror
+# Result: docker.io/library/alpine:latest → registry.mycompany.com/mirror/library/alpine:latest
 ```
-
-This auto-detection maintains backward compatibility while enabling new capabilities.
 
 > [!NOTE]
 > The full reference format in `org.opencontainers.image.ref.name` conforms to the OCI spec's reference grammar: `component ("/" component)*` where each component matches `alphanum (separator alphanum)*` with character set `A-Za-z0-9` and separators `-._:@/+`.
@@ -573,11 +680,15 @@ The rules file uses JSON format for defining complex restore scenarios:
 }
 ```
 
+Each `source` is a full repository reference including its registry, so rules can tell apart repositories with the same path on different registries.
+
+When several sources map to the same target repository (as in Example 4), their tags must not overlap. If two sources would write the same tag to the same target, restore fails before pushing anything and names the conflicting tag.
+
 ## User Experience Enhancements
 
 ### Progress Reporting
 
-For multi-repository operations, progress is organized by repository:
+For multi-repository operations, progress is organized by repository. Each repository is shown with its full name, including the registry, so multi-registry backups read the same way:
 
 ```console
 Backing up 3 repositories...
@@ -603,17 +714,17 @@ Successfully backed up 3 repositories with 3 tags in 52s
 Clear error messages with recovery suggestions:
 
 ```console
-Error: Failed to backup docker.io/library/postgres
+Error: Failed to backup ghcr.io/myorg/private-tool
   Reason: Authentication failed
   
 Partial backup created: 2 of 3 repositories backed up successfully
   ✓ docker.io/library/busybox (1 tag)
   ✓ docker.io/library/alpine (1 tag)
-  ✗ docker.io/library/postgres (authentication required)
+  ✗ ghcr.io/myorg/private-tool (authentication required)
 
 Recommendations:
-  1. Check credentials for docker.io
-  2. Use --username and --password to provide authentication
+  1. Check credentials for ghcr.io
+  2. Run "oras login ghcr.io" to store credentials for that registry
 ```
 
 ## Validation and Safety
@@ -632,35 +743,66 @@ oras restore --input backup.tar --rules rules.json registry.io/repo
 Error: --rules cannot be used with positional repository arguments.
 
 Use either:
-  - Positional args for direct/selective restore:
-      oras restore --input backup.tar registry.io/repo1 registry.io/repo2
+  - A target registry, optionally with --include, for direct/selective restore:
+      oras restore --input backup.tar --include library/alpine registry.io
   
   - Rules file for repository mapping:
       oras restore --input backup.tar --rules rules.json
 ```
 
+Other validation errors, all raised before any artifact is copied:
+
+- **Removed registry flags**: any of the flags listed in [Removed Flags](#removed-flags), with an error that names the per-registry replacement
+- **Target collisions**: two source repositories map to the same target repository (see [Collisions](#collisions))
+- **Invalid target names**: a target repository that is not a valid repository name or is longer than 255 characters, including an IPv6 source host with `--preserve-source-registry` (see [Keeping the Source Registry in the Target Path](#keeping-the-source-registry-in-the-target-path))
+- **Tag conflicts**: two sources write the same tag to the same target repository
+- **Tag or digest in the restore target**: the positional argument must be `<target-registry>[/<namespace>]`; use `--include` to select tags
+- **Unmatched patterns**: an `--include` pattern that matches nothing in the backup
+- **Missing target repository**: a backup created by an earlier version (tag-only `ref.name`) restored to a bare registry such as `target.com`
+- **Conflicting options**: `--preserve-source-registry` or `--include` used together with `--rules`
+
 ## Authentication Handling
 
-Multi-repository operations leverage the same authentication mechanisms as single-repository commands. Since all repositories in a backup operation must be from the same registry, all registry-specific flags (`--username`, `--password`, `--plain-http`, `--insecure`, `--ca-file`, etc.) work as expected.
+`oras backup` and `oras restore` can talk to more than one registry in a single command: a backup can read from several source registries, and a restore with a rules file can push to several target registries. A flag that holds one value for "the registry" is ambiguous in that case. It is unclear which registry `--plain-http` or `--ca-file` is meant for, and credentials, client certificates and headers would be sent to every registry the command talks to.
 
-**For multiple registries:** Create separate backups for each registry. This approach:
-- Allows using registry-specific flags for each backup
-- Simplifies authentication management
-- Provides better organization (one backup per registry)
-- Enables parallel backup operations
+To keep the behavior the same whether a command touches one registry or many, both commands drop the global registry flags and take all registry settings from per-registry configuration. This applies even when all references share one registry.
+
+### Removed Flags
+
+| Removed flag(s) | Replacement |
+|---|---|
+| `-u`/`--username`, `-p`/`--password`, `--password-stdin`, `--identity-token`, `--identity-token-stdin` | `oras login` for each registry (credential store), or `--registry-config` |
+| `--ca-file`, `--cert-file`, `--key-file` | Per-registry CA and client certificates in `certs.d` |
+| `--insecure` | `insecure = true` for the registry in `registries.conf` |
+| `--plain-http` | Per-registry plain HTTP setting (see [Prerequisites](#prerequisites)); `localhost` keeps its plain HTTP auto-detection |
+| `--distribution-spec` | Referrers API auto-detection per registry, or `referrers-api` for the registry in `registries.conf` |
+| `-H`/`--header` | None. Per-registry headers are out of scope |
+
+### Kept Flags
+
+| Flag | Why it stays |
+|---|---|
+| `--registry-config` | The auth file is keyed by registry host |
+| `--resolve` | Each entry names its own `host:port` |
+
+### Prerequisites
+
+The replacements above must be available before the flags are removed:
+
+- **Per-registry plain HTTP.** Today plain HTTP is only chosen by `--plain-http` or the `localhost` auto-detection. `insecure` in `registries.conf` skips TLS verification but does not switch to HTTP. A per-registry way to choose plain HTTP is needed, either by letting `insecure` also allow HTTP (as podman does) or with a separate setting.
+- **Containers configuration.** `registries.conf` and `certs.d` are currently read only when `ORAS_EXPERIMENTAL_CONTAINERS_CONFIG` is set. Either `backup` and `restore` read them without that variable, or this change waits until the support is no longer experimental.
 
 **Example:**
 ```bash
-# Backup from Docker Hub
-oras backup --output docker-hub-backup.tar \
-  docker.io/library/nginx:1.25-alpine \
-  docker.io/library/redis:7.2-alpine
+# Store credentials for each source registry
+oras login ghcr.io
+oras login registry.mycompany.com
 
-# Backup from private registry with authentication
-oras backup --output private-backup.tar \
-  --username admin --password-stdin \
-  registry.mycompany.com/app/frontend \
-  registry.mycompany.com/app/backend
+# Backup from Docker Hub, GHCR and a private registry in one operation
+oras backup --output app-deps.tar \
+  docker.io/library/nginx:1.25-alpine \
+  ghcr.io/myorg/private-tool:v1.0 \
+  registry.mycompany.com/app/frontend:v2.0
 ```
 
 ## Advanced Use Cases
@@ -676,9 +818,11 @@ oras backup --output migration.tar \
   docker.io/library/busybox:1.36.1 \
   docker.io/library/alpine:3.19.0
 
-# Step 2: Restore to private registry
+# Step 2: Restore to private registry, under the base-images namespace
 oras restore --input migration.tar \
   registry.mycompany.com/base-images
+# docker.io/library/busybox:1.36.1 → registry.mycompany.com/base-images/library/busybox:1.36.1
+# docker.io/library/alpine:3.19.0  → registry.mycompany.com/base-images/library/alpine:3.19.0
 ```
 
 ### Use Case 2: Multi-Environment Promotion
@@ -743,13 +887,19 @@ oras backup --output /backups/critical-apps-$DATE.tar \
 find /backups -name "critical-apps-*.tar" -mtime +7 -delete
 
 # After incident, restore specific version
+# Target the registry: repository paths such as production/frontend are kept
 oras restore --input /backups/critical-apps-20251120.tar \
-  registry.mycompany.com/production \
+  registry.mycompany.com \
   --dry-run  # Verify first
 
 # Then actual restore
 oras restore --input /backups/critical-apps-20251120.tar \
-  registry.mycompany.com/production
+  registry.mycompany.com
+
+# Or restore only the frontend
+oras restore --input /backups/critical-apps-20251120.tar \
+  --include production/frontend \
+  registry.mycompany.com
 ```
 
 ### Use Case 4: Repository Consolidation
@@ -806,76 +956,120 @@ oras backup --output application-stack.tar \
 
 # Transfer application-stack.tar via secure channel
 
-# On air-gapped system: Restore to internal registry
+# On air-gapped system: Restore to internal registry, under the production namespace
 oras restore --input application-stack.tar \
   airgap.internal.company/production
+# registry.mycompany.com/apps/frontend:v2.0 → airgap.internal.company/production/apps/frontend:v2.0
+# registry.mycompany.com/apps/backend:v2.0  → airgap.internal.company/production/apps/backend:v2.0
+# registry.mycompany.com/apps/database:v2.0 → airgap.internal.company/production/apps/database:v2.0
 ```
 
-**For dependencies from multiple public registries:**
+**For dependencies from multiple registries:**
 
-Create separate backups for each registry, then transfer and restore individually:
+Back up everything into one archive, then restore it to a single internal registry:
 
 ```bash
-# Backup from Docker Hub
-oras backup --output docker-images.tar \
+# On connected system: one backup from Docker Hub, GHCR and the company registry
+oras backup --output application-stack.tar \
+  --include-referrers \
   docker.io/library/nginx:1.25-alpine \
-  docker.io/library/redis:7.2-alpine
+  docker.io/library/redis:7.2-alpine \
+  ghcr.io/oras-project/oras:v1.1.0 \
+  registry.mycompany.com/apps/frontend:v2.0
 
-# Backup from GHCR
-oras backup --output ghcr-images.tar \
-  ghcr.io/oras-project/oras:v1.1.0
-
-# Transfer both tarballs, then restore separately on air-gapped system
-oras restore --input docker-images.tar airgap.internal.company/docker
-oras restore --input ghcr-images.tar airgap.internal.company/ghcr
+# On air-gapped system: restore all repositories, keeping the source registry in the path
+oras restore --input application-stack.tar \
+  --preserve-source-registry \
+  airgap.internal.company
+# docker.io/library/nginx              → airgap.internal.company/docker.io/library/nginx
+# ghcr.io/oras-project/oras            → airgap.internal.company/ghcr.io/oras-project/oras
+# registry.mycompany.com/apps/frontend → airgap.internal.company/registry.mycompany.com/apps/frontend
 ```
+
+Tools that package images for air-gapped environments can read the full reference of each artifact from `index.json` to find where it came from.
 
 ## Flag Reference
 
 ### Backup Flags (New)
 
-- `--full-reference`: Store complete reference path (registry/repository:tag) in `org.opencontainers.image.ref.name` annotation. Enables automation tools to determine original artifact location. Multi-repository backups always use full references. **Warning**: Backups created with this flag are not compatible with ORAS CLI versions prior to v1.4.0.
 - `--dry-run`: Preview backup operation without downloading artifacts
 
 ### Restore Flags (New)
 
 - `--rules <file>`: Rules configuration file for repository mapping
+- `--include <pattern>`: Restore only the artifacts whose source reference matches `[<registry>/]<repository>[:<tag>]`, with `*` as a wildcard (Mode 2). Repeatable. Cannot be used with `--rules`.
+- `--preserve-source-registry`: Keep the source registry host as the first path component of each target repository (Modes 1 and 2). Avoids collisions when restoring a multi-registry backup to one registry. Cannot be used with `--rules`.
 
-### Common Flags (Enhanced)
+### Common Flags (Removed)
 
-All existing authentication, TLS, and connection flags continue to work with multi-repository operations.
+The global credential, TLS, header and distribution-spec flags are removed from both commands. `--registry-config` and `--resolve` remain. See [Removed Flags](#removed-flags) for the replacement of each flag.
 
 ## Backward Compatibility
 
-All existing single-repository commands continue to work unchanged:
+Existing single-repository backup command lines continue to work, unless they use one of the [removed registry flags](#removed-flags):
 
 ```bash
-# These continue to work exactly as before
 oras backup --output backup.tar registry.com/repo:tag
-oras restore --input backup.tar registry.com/repo:tag
 oras backup --output backup.tar registry.com/repo
-oras restore --input backup.tar registry.com/repo
 ```
 
-Multi-repository support is activated only when:
-- Multiple repository arguments are provided
-- A rules file is specified
+**Restore target:** `oras restore` always treats a single positional argument as `<target-registry>[/<namespace>]` and keeps the source repository path under it. This changes existing restore command lines:
+
+```bash
+oras backup --output backup.tar registry.com/team/repo:tag
+oras restore --input backup.tar target.com/team/repo
+# Before: registry.com/team/repo:tag → target.com/team/repo:tag
+# Now:    registry.com/team/repo:tag → target.com/team/repo/team/repo:tag
+
+oras restore --input backup.tar target.com
+# Now:    registry.com/team/repo:tag → target.com/team/repo:tag
+```
+
+Tag-only backups created by earlier versions are the exception: they record no repository path, so the argument remains the target repository.
+
+**Tag selection:** the target argument no longer accepts tags. Today `oras restore --input backup.tar target.com/repo:v1,v2` restores only `v1` and `v2`; it is now rejected with an error instead of being reinterpreted, so existing scripts fail visibly rather than restoring everything. Use `--include` instead:
+
+```bash
+# Before
+oras restore --input backup.tar target.com/repo:v1,v2
+# Now
+oras restore --input backup.tar --include '*:v1' --include '*:v2' target.com/repo
+```
+
+**Backup format:** `oras backup` and `oras restore` are experimental, and this proposal changes the backup format without an opt-in flag:
+
+- **New backups, new client**: Supported.
+- **Old (tag-only) backups, new client**: Supported. Restore treats a tag-only `ref.name` as a tag and requires an explicit target repository, as today; a bare registry target is rejected. Tags are selected with `--include` (e.g., `--include '*:v1'`) rather than a `:tag` suffix on the target.
+- **New backups, old client**: Not supported. Earlier versions use the `ref.name` value directly as the destination tag, which fails for a full reference. Users must upgrade the client that restores.
+- **Other ORAS commands on new backups**: Address artifacts with `--oci-layout-path <path> <full-reference>`; `--oci-layout <path>:<tag>` no longer resolves (see [Inspecting Backup Contents](#inspecting-backup-contents)).
+
+**Registry flags:** command lines that use any of the [removed flags](#removed-flags) fail with an error that names the replacement:
+
+```bash
+# Before
+oras backup --output backup.tar -u user -p secret --plain-http registry.lan:5000/app:v1
+# Now
+oras login registry.lan:5000
+oras backup --output backup.tar registry.lan:5000/app:v1   # plain HTTP configured for registry.lan:5000
+```
+
+The release notes for the version that ships this change must call out the format change, the new interpretation of the restore target and the removed flags.
 
 ## Summary
 
-This proposal extends `oras backup` and `oras restore` with intuitive multi-repository support within a single registry, while maintaining full backward compatibility. The design focuses on intentional, bounded backup operations where users explicitly specify which repositories to include.
+This proposal extends `oras backup` and `oras restore` with multi-repository support across one or more registries. The design focuses on intentional, bounded backup operations where users explicitly specify which repositories to include.
 
 Key features:
-- **Multiple repositories in single backup**: Backup from multiple explicitly-specified repos within the same registry
+- **Multiple repositories in single backup**: Backup from multiple explicitly-specified repos, in one registry or several
+- **Full references**: Every backup records `<registry>/<repository>:<tag>` for each artifact
 - **Flexible restore options**: Direct, selective, or rules-based restoration
-- **Repository mapping**: Powerful remapping capabilities for restructuring during restore
+- **Repository mapping**: Powerful remapping capabilities for restructuring during restore, with collision detection
 - **Safety features**: Dry-run preview and clear validation
-- **Enterprise-ready**: Full support for registry-specific flags, error recovery, and progress reporting
-- **Backward compatible**: Single-repository operations unchanged
-- **Multi-registry approach**: For multiple registries, create separate backups for better organization and simpler authentication
+- **Enterprise-ready**: Credentials and connection settings per registry, error recovery, and progress reporting
+- **Consistent restore targets**: Repository paths are always kept under the restore target; existing backup command lines work unless they use a removed registry flag, and existing backups remain restorable
 
 **Out of Scope:**
 - **Entire registry backup**: Not supported. Use registry-native replication/backup features for registry-wide operations.
-- **Pattern-based selection**: Not included in this proposal. May be considered in future iterations if customer demand exists.
-- **Cross-registry backup**: Requires separate backup operations per registry.
+- **Pattern-based backup selection**: Backup takes explicit references only; wildcards over registry contents are not included in this proposal and may be considered in future iterations if customer demand exists. (Restore's `--include` patterns only match what is already in the backup.)
+- **Per-registry flag syntax**: Flags such as `--header <host>=<name>:<value>` are not included. Registry settings come from configuration files; per-registry flags may be considered later if there is demand.
 
