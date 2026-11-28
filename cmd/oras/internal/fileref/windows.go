@@ -38,7 +38,7 @@ func Parse(reference string, defaultMetadata string) (filePath, metadata string,
 
 func doParse(reference string, defaultMetadata string) (filePath, metadata string) {
 	i := strings.LastIndex(reference, ":")
-	if i < 0 || (i == 1 && len(reference) > 2 && unicode.IsLetter(rune(reference[0])) && reference[2] == '\\') {
+	if i < 0 || (i == 1 && len(reference) > 2 && unicode.IsLetter(rune(reference[0])) && (reference[2] == '\\' || reference[2] == '/')) {
 		// Relative file path with disk prefix is NOT supported, e.g. `c:file1`
 		return reference, defaultMetadata
 	}
