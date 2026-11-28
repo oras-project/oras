@@ -511,11 +511,18 @@ func runPushRecursive(cmd *cobra.Command, opts *pushOptions) error {
 		fileDescs[fileNode.Path] = desc
 	}
 
-	// Build the manifest hierarchy
+	// Build the manifest hierarchy. ApplyReproducible pins the created
+	// annotation from SOURCE_DATE_EPOCH on every packed manifest, like the
+	// ordinary push path; PackManifest would otherwise stamp the wall-clock
+	// time and make recursive pushes non-reproducible.
+	packOpts := oras.PackManifestOptions{
+		ManifestAnnotations: opts.Annotations[option.AnnotationManifest],
+	}
+	opts.ApplyReproducible(&packOpts)
 	builder := manifestutil.NewBuilder(memoryStore, manifestutil.BuilderOptions{
 		MaxBlobsPerManifest: opts.MaxBlobsPerManifest,
 		ArtifactType:        opts.artifactType,
-		ManifestAnnotations: opts.Annotations[option.AnnotationManifest],
+		ManifestAnnotations: packOpts.ManifestAnnotations,
 		ConfigAnnotations:   opts.Annotations[option.AnnotationConfig],
 		PreserveEmptyDirs:   opts.PreserveEmptyDirs,
 	})

@@ -1219,3 +1219,67 @@ func Test_runPushRecursive_configAnnotations(t *testing.T) {
 		t.Errorf("config annotations = %v, want k=v", manifest.Config.Annotations)
 	}
 }
+
+// Test_runPushRecursive_reproducible verifies that SOURCE_DATE_EPOCH pins the
+// org.opencontainers.image.created annotation on manifests built by a
+// recursive push, matching the ordinary push path: without it, PackManifest
+// stamps the wall-clock time and recursive pushes are not reproducible.
+func Test_runPushRecursive_reproducible(t *testing.T) {
+	t.Setenv("SOURCE_DATE_EPOCH", "1700000000")
+	wantCreated := "2023-11-14T22:13:20Z"
+	ctx := context.Background()
+
+	srcDir := filepath.Join(t.TempDir(), "src")
+	if err := os.MkdirAll(srcDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(srcDir, "a.txt"), []byte("a"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	pushOnce := func(layoutDir string) ocispec.Descriptor {
+		t.Helper()
+		if err := runPushCmd(t,
+			"--oci-layout",
+			"--recursive",
+			"--disable-path-validation",
+			layoutDir+":v1",
+			srcDir,
+		); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		store, err := oci.New(layoutDir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		desc, err := store.Resolve(ctx, "v1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return desc
+	}
+
+	tmp := t.TempDir()
+	first := pushOnce(filepath.Join(tmp, "layout1"))
+	second := pushOnce(filepath.Join(tmp, "layout2"))
+	if first.Digest != second.Digest {
+		t.Errorf("recursive push is not reproducible: root digests %s and %s differ", first.Digest, second.Digest)
+	}
+
+	store, err := oci.New(filepath.Join(tmp, "layout1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	rc, err := store.Fetch(ctx, first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = rc.Close() }()
+	var manifest ocispec.Manifest
+	if err := json.NewDecoder(rc).Decode(&manifest); err != nil {
+		t.Fatal(err)
+	}
+	if got := manifest.Annotations[ocispec.AnnotationCreated]; got != wantCreated {
+		t.Errorf("created annotation = %q, want %q", got, wantCreated)
+	}
+}
