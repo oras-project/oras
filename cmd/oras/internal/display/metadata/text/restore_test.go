@@ -101,10 +101,27 @@ func TestRestoreHandler_OnTagsFound(t *testing.T) {
 	tests := []struct {
 		name    string
 		tags    []string
+		total   int // number of tags in the backup; 0 means len(tags)
 		out     io.Writer
 		wantErr bool
 		want    string
 	}{
+		{
+			name:    "good path with a few selected tags",
+			tags:    []string{"v1.0", "latest"},
+			total:   5,
+			out:     &bytes.Buffer{},
+			wantErr: false,
+			want:    "Selected 2 of 5 tag(s) in the backup: v1.0, latest\n",
+		},
+		{
+			name:    "good path with more than 5 selected tags",
+			tags:    []string{"v1", "v2", "v3", "v4", "v5", "v6"},
+			total:   10,
+			out:     &bytes.Buffer{},
+			wantErr: false,
+			want:    "Selected 6 of 10 tag(s) in the backup:\nv1\nv2\nv3\nv4\nv5\nv6\n",
+		},
 		{
 			name:    "good path with a few tags",
 			tags:    []string{"v1.0", "latest", "stable"},
@@ -157,7 +174,11 @@ func TestRestoreHandler_OnTagsFound(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			printer := output.NewPrinter(tt.out, os.Stderr)
 			handler := NewRestoreHandler(printer, false)
-			if err := handler.OnTagsFound(tt.tags); (err != nil) != tt.wantErr {
+			total := tt.total
+			if total == 0 {
+				total = len(tt.tags)
+			}
+			if err := handler.OnTagsFound(tt.tags, total); (err != nil) != tt.wantErr {
 				t.Fatalf("OnTagsFound() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if !tt.wantErr {
@@ -167,6 +188,19 @@ func TestRestoreHandler_OnTagsFound(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestRestoreHandler_OnRepositoriesSkipped(t *testing.T) {
+	repos := []string{"docker.io/library/nginx", "ghcr.io/oras-project/oras"}
+
+	out := &bytes.Buffer{}
+	handler := NewRestoreHandler(output.NewPrinter(out, os.Stderr), false)
+	if err := handler.OnRepositoriesSkipped(repos); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := out.String(), "Skipped 2 repository(ies) not selected by --include: docker.io/library/nginx, ghcr.io/oras-project/oras\n"; got != want {
+		t.Errorf("OnRepositoriesSkipped() got = %q, want %q", got, want)
 	}
 }
 

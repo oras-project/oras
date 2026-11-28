@@ -16,6 +16,7 @@ limitations under the License.
 package text
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -42,17 +43,22 @@ func (rh *RestoreHandler) OnTarLoaded(path string, size int64) error {
 	return rh.printer.Printf("Loaded backup archive: %s (%s)\n", path, humanize.ToBytes(size))
 }
 
-// OnTagsFound implements metadata.RestoreHandler.
-func (rh *RestoreHandler) OnTagsFound(tags []string) error {
+// OnTagsFound implements metadata.RestoreHandler. totalCount is the number of
+// tags in the backup, of which tags are selected for restoring.
+func (rh *RestoreHandler) OnTagsFound(tags []string, totalCount int) error {
 	if len(tags) == 0 {
 		return rh.printer.Printf("No tags found in the backup\n")
 	}
+	found := fmt.Sprintf("Found %d tag(s) in the backup", len(tags))
+	if len(tags) != totalCount {
+		found = fmt.Sprintf("Selected %d of %d tag(s) in the backup", len(tags), totalCount)
+	}
 	if len(tags) <= 5 {
 		// print small number of tags in one line
-		return rh.printer.Printf("Found %d tag(s) in the backup: %s\n", len(tags), strings.Join(tags, ", "))
+		return rh.printer.Printf("%s: %s\n", found, strings.Join(tags, ", "))
 	}
 	// print large number of tags line by line
-	if err := rh.printer.Printf("Found %d tag(s) in the backup:\n", len(tags)); err != nil {
+	if err := rh.printer.Printf("%s:\n", found); err != nil {
 		return err
 	}
 	for _, tag := range tags {
@@ -61,6 +67,11 @@ func (rh *RestoreHandler) OnTagsFound(tags []string) error {
 		}
 	}
 	return nil
+}
+
+// OnRepositoriesSkipped implements metadata.RestoreHandler.
+func (rh *RestoreHandler) OnRepositoriesSkipped(repos []string) error {
+	return rh.printer.Printf("Skipped %d repository(ies) not selected by --include: %s\n", len(repos), strings.Join(repos, ", "))
 }
 
 // OnArtifactPushed implements metadata.RestoreHandler.

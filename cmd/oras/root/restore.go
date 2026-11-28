@@ -20,6 +20,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -54,9 +56,11 @@ type restoreOptions struct {
 	excludeReferrers       bool
 	dryRun                 bool
 	preserveSourceRegistry bool
+	includes               []string
 
 	// derived options
-	target string // target registry, optionally with a namespace
+	target          string // target registry, optionally with a namespace
+	includePatterns []includePattern
 }
 
 func restoreCmd() *cobra.Command {
@@ -70,6 +74,10 @@ Each artifact is restored to <registry>[/<namespace>]/<repository>, where <repos
 recorded in the backup. The source registry is dropped unless --preserve-source-registry is used.
 Backups created by earlier versions record only tags, so they are restored to the given <registry>/<repository>.
 
+All artifacts in the backup are restored unless --include is used. Each --include pattern
+[<registry>/]<repository>[:<tag>] selects the artifacts whose source reference matches it, where '*' matches
+any sequence of characters within the repository or the tag.
+
 Example - Restore all tagged artifacts from a tar archive:
   oras restore --input hello.tar localhost:5000
 
@@ -78,6 +86,12 @@ Example - Restore all tagged artifacts from a directory under a namespace:
 
 Example - Perform a dry run without actually uploading artifacts:
   oras restore --input hello --dry-run localhost:5000
+
+Example - Restore only some repositories and tags:
+  oras restore --input hello --include library/alpine --include library/busybox:1.36.1 localhost:5000
+
+Example - Restore every repository from one source registry:
+  oras restore --input hello --include "registry.lan:5000/*" localhost:5000
 
 Example - Keep the source registry in the target repository path, e.g. restore localhost:5001/app to localhost:5000/localhost_5001/app:
   oras restore --input hello --preserve-source-registry localhost:5000
@@ -112,6 +126,11 @@ Example - Set custom concurrency level:
 			if err != nil {
 				return err
 			}
+			// parse include patterns
+			opts.includePatterns, err = parseIncludePatterns(opts.includes)
+			if err != nil {
+				return err
+			}
 
 			opts.DisableTTY(opts.Debug, false)
 			return nil
@@ -129,6 +148,7 @@ Example - Set custom concurrency level:
 	cmd.Flags().BoolVar(&opts.excludeReferrers, "exclude-referrers", false, "restore artifacts excluding their referrers")
 	cmd.Flags().BoolVar(&opts.dryRun, "dry-run", false, "simulate the restore process without actually uploading any artifacts")
 	cmd.Flags().BoolVar(&opts.preserveSourceRegistry, "preserve-source-registry", false, "keep the source registry as the first path component of each target repository, lowercased and with ':' replaced by '_' (e.g. localhost_5000)")
+	cmd.Flags().StringArrayVar(&opts.includes, "include", nil, "restore only the artifacts whose source reference matches the `pattern` [<registry>/]<repository>[:<tag>], where '*' matches any characters; repeatable")
 	opts.Concurrency.Concurrency = 5
 	opts.EnableDistributionSpecFlag()
 	// apply flags
@@ -202,13 +222,38 @@ func doRestore(
 			Recommendation: fmt.Sprintf(`If you want to list available tags in %q, use "oras repo tags --oci-layout"`, opts.input),
 		}
 	}
+	// select the artifacts to restore before mapping them, so that only the
+	// selected artifacts are checked for collisions
+	totalTags := len(tags)
+	var skipped []string
+	if len(opts.includePatterns) > 0 {
+		var selected []int
+		selected, skipped, err = selectRestoreRefs(opts.includePatterns, srcRefs, tags)
+		if err != nil {
+			return err
+		}
+		selectedRefs, selectedTags, selectedRoots := make([]string, len(selected)), make([]string, len(selected)), make([]ocispec.Descriptor, len(selected))
+		for j, i := range selected {
+			selectedRefs[j], selectedTags[j], selectedRoots[j] = srcRefs[i], tags[i], roots[i]
+		}
+		srcRefs, tags, roots = selectedRefs, selectedTags, selectedRoots
+	}
 	// map each artifact to its target repository before pushing anything
 	dstRepos, err := restoreTargets(opts.target, srcRefs, opts.preserveSourceRegistry)
 	if err != nil {
+		var oerr *oerrors.Error
+		if len(opts.includePatterns) > 0 && errors.Is(err, errRepositoryCollision) && errors.As(err, &oerr) {
+			oerr.Recommendation += ", or add the source registry to the --include pattern, e.g. --include <registry>/<repository>"
+		}
 		return err
 	}
-	if err := metadataHandler.OnTagsFound(tags); err != nil {
+	if err := metadataHandler.OnTagsFound(tags, totalTags); err != nil {
 		return err
+	}
+	if len(skipped) > 0 {
+		if err := metadataHandler.OnRepositoriesSkipped(skipped); err != nil {
+			return err
+		}
 	}
 
 	// prepare copy options
@@ -377,7 +422,7 @@ func restoreTargets(target string, srcRefs []string, preserveSourceRegistry bool
 	}
 	if len(collisions) > 0 {
 		return nil, &oerrors.Error{
-			Err:            fmt.Errorf("source repositories collide in the target: %s", strings.Join(collisions, "; ")),
+			Err:            fmt.Errorf("%w: %s", errRepositoryCollision, strings.Join(collisions, "; ")),
 			Recommendation: "Use --preserve-source-registry to keep the source registry in the target repository path",
 		}
 	}
@@ -404,6 +449,160 @@ func parseRestoreTarget(target string) (string, error) {
 		return "", fmt.Errorf("invalid target %q: %w", target, err)
 	}
 	return target, nil
+}
+
+// errRepositoryCollision is returned when two source repositories restore to
+// the same target repository.
+var errRepositoryCollision = errors.New("source repositories collide in the target")
+
+// includePattern selects the artifacts to restore by their source reference.
+// It has the form [<registry>/]<repository>[:<tag>], where '*' matches any
+// sequence of characters, including '/', within the repository or the tag.
+type includePattern struct {
+	raw            string
+	repositoryPart string
+	repository     *regexp.Regexp
+	tag            *regexp.Regexp // nil selects every tag
+}
+
+// parseIncludePatterns parses the --include patterns.
+func parseIncludePatterns(patterns []string) ([]includePattern, error) {
+	parsed := make([]includePattern, 0, len(patterns))
+	for _, pattern := range patterns {
+		p, err := parseIncludePattern(pattern)
+		if err != nil {
+			return nil, err
+		}
+		parsed = append(parsed, p)
+	}
+	return parsed, nil
+}
+
+// parseIncludePattern parses an --include pattern. The pattern is split into a
+// repository part and a tag part at the last ':' after the last '/', so a ':'
+// before the last '/' is a registry port. A pattern without a '/' is a
+// repository, never a registry.
+func parseIncludePattern(pattern string) (includePattern, error) {
+	if strings.Contains(pattern, "@") {
+		return includePattern{}, fmt.Errorf("invalid --include pattern %q: digests are not supported", pattern)
+	}
+	repository, tag, hasTag := pattern, "", false
+	lastSlash := strings.LastIndex(pattern, "/")
+	if i := strings.LastIndex(pattern[lastSlash+1:], ":"); i >= 0 {
+		i += lastSlash + 1
+		repository, tag, hasTag = pattern[:i], pattern[i+1:], true
+	}
+	if repository == "" {
+		return includePattern{}, fmt.Errorf("invalid --include pattern %q: the repository is empty", pattern)
+	}
+	if hasTag && tag == "" {
+		return includePattern{}, fmt.Errorf("invalid --include pattern %q: the tag is empty", pattern)
+	}
+	p := includePattern{
+		raw:            pattern,
+		repositoryPart: repository,
+		repository:     globRegexp(repository),
+	}
+	if hasTag {
+		p.tag = globRegexp(tag)
+	}
+	return p, nil
+}
+
+// globRegexp compiles a pattern where '*' matches any sequence of characters.
+func globRegexp(glob string) *regexp.Regexp {
+	parts := strings.Split(glob, "*")
+	for i, part := range parts {
+		parts[i] = regexp.QuoteMeta(part)
+	}
+	return regexp.MustCompile("^" + strings.Join(parts, ".*") + "$")
+}
+
+// matches reports whether the pattern selects the artifact stored as srcRef
+// with the given tag. The repository part is compared literally with the
+// stored <registry>/<repository> and with <repository> alone. A tag-only
+// reference from a backup created by an earlier version has no repository, so
+// only a repository part of "*" selects it.
+func (p includePattern) matches(srcRef, tag string) bool {
+	if p.tag != nil && !p.tag.MatchString(tag) {
+		return false
+	}
+	if isTagOnlyRefName(srcRef) {
+		return p.repositoryPart == "*"
+	}
+	ref, err := properties.NewReference(srcRef)
+	if err != nil {
+		return false
+	}
+	return p.repository.MatchString(ref.Registry+"/"+ref.Repository) || p.repository.MatchString(ref.Repository)
+}
+
+// selectRestoreRefs returns the indexes of the stored references selected by
+// any of the patterns, and the source repositories of which nothing is
+// selected. It fails if a pattern selects nothing, suggesting the stored
+// repositories whose last path component equals the pattern's.
+func selectRestoreRefs(patterns []includePattern, srcRefs, tags []string) (selected []int, skipped []string, err error) {
+	matched := make([]bool, len(patterns))
+	var srcRepos, repoPaths []string // source repositories in backup order, with and without the registry
+	seen := make(map[string]bool)
+	selectedRepos := make(map[string]bool)
+	for i, srcRef := range srcRefs {
+		srcRepo := ""
+		if !isTagOnlyRefName(srcRef) {
+			if ref, err := properties.NewReference(srcRef); err == nil {
+				srcRepo = ref.Registry + "/" + ref.Repository
+				if !seen[srcRepo] {
+					seen[srcRepo] = true
+					srcRepos = append(srcRepos, srcRepo)
+					repoPaths = append(repoPaths, ref.Repository)
+				}
+			}
+		}
+		isSelected := false
+		for j, p := range patterns {
+			if p.matches(srcRef, tags[i]) {
+				matched[j] = true
+				isSelected = true
+			}
+		}
+		if isSelected {
+			selected = append(selected, i)
+			selectedRepos[srcRepo] = true
+		}
+	}
+
+	var unmatched []string
+	for j, p := range patterns {
+		if matched[j] {
+			continue
+		}
+		description := fmt.Sprintf("%q", p.raw)
+		if name := p.repositoryPart[strings.LastIndex(p.repositoryPart, "/")+1:]; !strings.Contains(name, "*") {
+			var suggestions []string
+			for _, repoPath := range repoPaths {
+				if repoPath[strings.LastIndex(repoPath, "/")+1:] == name && !slices.Contains(suggestions, fmt.Sprintf("%q", repoPath)) {
+					suggestions = append(suggestions, fmt.Sprintf("%q", repoPath))
+				}
+			}
+			if len(suggestions) > 0 {
+				description += fmt.Sprintf(" (did you mean %s?)", strings.Join(suggestions, " or "))
+			}
+		}
+		unmatched = append(unmatched, description)
+	}
+	if len(unmatched) > 0 {
+		return nil, nil, &oerrors.Error{
+			Err:            fmt.Errorf("--include pattern(s) match nothing in the backup: %s", strings.Join(unmatched, "; ")),
+			Recommendation: "Patterns match the source references recorded in the backup. Use --dry-run without --include to list them",
+		}
+	}
+
+	for _, srcRepo := range srcRepos {
+		if !selectedRepos[srcRepo] {
+			skipped = append(skipped, srcRepo)
+		}
+	}
+	return selected, skipped, nil
 }
 
 // maxRepositoryLength is the maximum length of a repository name accepted by
