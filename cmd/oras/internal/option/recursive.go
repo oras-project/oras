@@ -39,7 +39,7 @@ type Recursive struct {
 
 // ApplyFlags applies flags to a command flag set.
 func (opts *Recursive) ApplyFlags(fs *pflag.FlagSet) {
-	fs.BoolVarP(&opts.Recursive, "recursive", "r", false, "[Experimental] recursively push directory contents as hierarchical OCI artifacts")
+	fs.BoolVar(&opts.Recursive, "recursive", false, "[Experimental] recursively push directory contents as hierarchical OCI artifacts")
 	fs.IntVar(&opts.MaxBlobsPerManifest, "max-blobs-per-manifest", DefaultMaxBlobsPerManifest, "[Experimental] maximum number of blobs per manifest (used with --recursive)")
 	fs.BoolVar(&opts.PreserveEmptyDirs, "preserve-empty-dirs", false, "[Experimental] preserve empty directories when pushing recursively")
 	fs.BoolVar(&opts.FollowSymlinks, "follow-symlinks", false, "[Experimental] follow symbolic links when pushing recursively")
