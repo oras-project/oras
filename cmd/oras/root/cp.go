@@ -44,6 +44,7 @@ import (
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
 	"oras.land/oras/internal/contentutil"
+	"oras.land/oras/internal/descriptor"
 	"oras.land/oras/internal/docker"
 	"oras.land/oras/internal/graph"
 	"oras.land/oras/internal/listener"
@@ -170,10 +171,11 @@ func runCopy(cmd *cobra.Command, opts *copyOptions) error {
 	}
 
 	// Handle single platform or recursive mode
-	return copyAndFinalize(ctx, statusHandler, metadataHandler, src, dst, opts, true)
+	return copyAndFinalize(ctx, logger, statusHandler, metadataHandler, src, dst, opts, true)
 }
 
-func copyAndFinalize(ctx context.Context, statusHandler status.CopyHandler, metadataHandler metadata.CopyHandler, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions, rootInSource bool) error {
+func copyAndFinalize(ctx context.Context, logger logrus.FieldLogger, statusHandler status.CopyHandler, metadataHandler metadata.CopyHandler, src oras.ReadOnlyGraphTarget, dst oras.GraphTarget, opts *copyOptions, rootInSource bool) error {
+	warnIfCopyReplacesIndex(ctx, logger, src, dst, opts)
 	desc, err := doCopy(ctx, statusHandler, src, dst, opts)
 	if err != nil {
 		return err
@@ -203,6 +205,43 @@ func copyAndFinalize(ctx context.Context, statusHandler status.CopyHandler, meta
 	}
 
 	return metadataHandler.Render()
+}
+
+// warnIfCopyReplacesIndex warns for each destination tag, extra tags included,
+// that points to a multi-platform index the copy replaces with a single
+// manifest, as copying one platform with --platform does. Like the copy itself
+// it resolves the source with the selected platform. Every lookup is advisory:
+// a failure is logged at debug level and the copy goes on.
+func warnIfCopyReplacesIndex(ctx context.Context, logger logrus.FieldLogger, src oras.ReadOnlyTarget, dst oras.ReadOnlyTarget, opts *copyOptions) {
+	var tags []string
+	if ref := opts.To.Reference; ref != "" {
+		if _, err := digest.Parse(ref); err != nil {
+			tags = append(tags, ref)
+		}
+	}
+	for _, tag := range opts.extraRefs {
+		tags = append(tags, opts.To.ExtraTagReference(tag))
+	}
+	if len(tags) == 0 {
+		return
+	}
+
+	resolveOpts := oras.DefaultResolveOptions
+	if len(opts.Platforms.Platforms) == 1 {
+		resolveOpts.TargetPlatform = opts.Platforms.Platforms[0]
+	}
+	root, err := oras.Resolve(ctx, src, opts.From.Reference, resolveOpts)
+	if err != nil {
+		logger.Debugf("failed to resolve source %q: %v", opts.From.Reference, err)
+		return
+	}
+	if descriptor.IsIndex(root) {
+		// Copying an index never narrows a destination tag.
+		return
+	}
+	for _, tag := range tags {
+		warnIfReplacingIndex(ctx, dst, tag, root, "copying", logger)
+	}
 }
 
 // copyMultiplePlatforms handles copying when multiple platforms are specified
@@ -236,7 +275,7 @@ func copyMultiplePlatforms(ctx context.Context, logger logrus.FieldLogger, statu
 	// If filtering retained every index entry, preserve the original root so
 	// that its digest, referrers, and all entries are kept.
 	if len(kept) == len(index.Manifests) {
-		return copyAndFinalize(ctx, statusHandler, metadataHandler, src, dst, opts, true)
+		return copyAndFinalize(ctx, logger, statusHandler, metadataHandler, src, dst, opts, true)
 	}
 
 	// Equivalent platform selectors can resolve to a single manifest. Keep the
@@ -245,7 +284,7 @@ func copyMultiplePlatforms(ctx context.Context, logger logrus.FieldLogger, statu
 	if len(kept) == 1 && index.Manifests[kept[0]].Platform != nil {
 		singleOpts := *opts
 		singleOpts.Platforms.Platforms = []*ocispec.Platform{index.Manifests[kept[0]].Platform}
-		return copyAndFinalize(ctx, statusHandler, metadataHandler, src, dst, &singleOpts, true)
+		return copyAndFinalize(ctx, logger, statusHandler, metadataHandler, src, dst, &singleOpts, true)
 	}
 
 	// Perform multiple copies
@@ -388,7 +427,7 @@ func doMultipleCopy(ctx context.Context, logger logrus.FieldLogger, statusHandle
 			logger.Warn("referrers of the source index are not copied because selecting a subset of platforms produces a new index digest")
 		}
 	}
-	return copyAndFinalize(ctx, statusHandler, metadataHandler, filteredTarget, dst, opts, false)
+	return copyAndFinalize(ctx, logger, statusHandler, metadataHandler, filteredTarget, dst, opts, false)
 }
 
 // filterIndexContent rewrites only the manifests array, preserving source key

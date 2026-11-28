@@ -88,6 +88,13 @@ func (target *Target) ExtraTagTarget(dst oras.Target) oras.Target {
 	return &extraTagTarget{Target: dst, prefix: prefix}
 }
 
+// ExtraTagReference returns the reference ExtraTagTarget tags with for the
+// additional tag, so that the tag can be resolved in the destination.
+func (target *Target) ExtraTagReference(tag string) string {
+	prefix, _ := target.extraTagPrefix()
+	return prefix + tag
+}
+
 type extraTagTarget struct {
 	oras.Target
 	prefix string

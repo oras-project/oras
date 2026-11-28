@@ -176,7 +176,7 @@ func Test_copyAndFinalize_handlerCalls(t *testing.T) {
 	statusHandler := &displaytest.RecordingCopyStatusHandler{Recorder: recorder}
 	metadataHandler := &displaytest.RecordingCopyMetadataHandler{Recorder: recorder}
 
-	if err := copyAndFinalize(context.Background(), statusHandler, metadataHandler, memStore, memory.New(), &opts, true); err != nil {
+	if err := copyAndFinalize(context.Background(), logrus.New(), statusHandler, metadataHandler, memStore, memory.New(), &opts, true); err != nil {
 		t.Fatalf("copyAndFinalize() error = %v", err)
 	}
 	if got, want := recorder.Snapshot(), []string{"PreCopy", "PostCopy", "OnCopied", "Render"}; !slices.Equal(got, want) {
@@ -241,7 +241,7 @@ func Test_copyAndFinalize_extraTags(t *testing.T) {
 				target = tagFailTarget{dst}
 			}
 
-			err = copyAndFinalize(context.Background(), statusHandler, metadataHandler, memStore, target, &opts, true)
+			err = copyAndFinalize(context.Background(), logrus.New(), statusHandler, metadataHandler, memStore, target, &opts, true)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("copyAndFinalize() error = %v, wantErr %t", err, tt.wantErr)
 			}
@@ -266,7 +266,7 @@ func Test_copyAndFinalize_onCopiedError(t *testing.T) {
 	statusHandler := &displaytest.RecordingCopyStatusHandler{Recorder: recorder}
 	metadataHandler := &displaytest.RecordingCopyMetadataHandler{Recorder: recorder, CopiedErr: wantedErr}
 
-	err := copyAndFinalize(context.Background(), statusHandler, metadataHandler, memStore, memory.New(), &opts, true)
+	err := copyAndFinalize(context.Background(), logrus.New(), statusHandler, metadataHandler, memStore, memory.New(), &opts, true)
 	if !errors.Is(err, wantedErr) {
 		t.Fatalf("copyAndFinalize() error = %v, want %v", err, wantedErr)
 	}
@@ -2187,5 +2187,190 @@ func Test_copyCmd_invalidExtraTag(t *testing.T) {
 	err := cmd.Execute()
 	if err == nil || err.Error() != "empty extra tag" {
 		t.Fatalf("got %v, want empty extra tag error", err)
+	}
+}
+
+// newPlatformIndex pushes to store an index of one linux/amd64 manifest and
+// returns the index and the manifest.
+func newPlatformIndex(t *testing.T, store *memory.Store, annotation string) (ocispec.Descriptor, ocispec.Descriptor) {
+	t.Helper()
+	ctx := context.Background()
+	manifest, err := oras.PackManifest(ctx, store, oras.PackManifestVersion1_1, "application/vnd.test", oras.PackManifestOptions{
+		ManifestAnnotations: map[string]string{"test": annotation},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Platform = &ocispec.Platform{OS: "linux", Architecture: "amd64"}
+	indexContent, err := json.Marshal(ocispec.Index{
+		Versioned: specs.Versioned{SchemaVersion: 2},
+		MediaType: ocispec.MediaTypeImageIndex,
+		Manifests: []ocispec.Descriptor{manifest},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	index, err := oras.PushBytes(ctx, store, ocispec.MediaTypeImageIndex, indexContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.Platform = nil
+	return index, manifest
+}
+
+// resolveFailTarget is a memory store whose Resolve fails for any reference.
+type resolveFailTarget struct {
+	*memory.Store
+}
+
+func (resolveFailTarget) Resolve(context.Context, string) (ocispec.Descriptor, error) {
+	return ocispec.Descriptor{}, errors.New("resolve failed")
+}
+
+func Test_copyAndFinalize_warnsWhenReplacingIndex(t *testing.T) {
+	const indexWarning = "currently points to multi-platform index"
+	amd64 := &ocispec.Platform{OS: "linux", Architecture: "amd64"}
+	tests := []struct {
+		name string
+		// tagDst tags the destination before the copy.
+		tagDst      func(t *testing.T, dst *memory.Store, srcIndex, srcManifest ocispec.Descriptor)
+		platform    *ocispec.Platform
+		extraRefs   []string
+		wantWarned  []string
+		wantMissing bool
+	}{
+		{
+			name: "platform copy over an index",
+			tagDst: func(t *testing.T, dst *memory.Store, _, _ ocispec.Descriptor) {
+				t.Helper()
+				index, _ := newPlatformIndex(t, dst, "dst")
+				for _, tag := range []string{"v1", "v2"} {
+					if err := dst.Tag(context.Background(), index, tag); err != nil {
+						t.Fatal(err)
+					}
+				}
+			},
+			platform:   amd64,
+			extraRefs:  []string{"v2"},
+			wantWarned: []string{`tag \"v1\"`, `tag \"v2\"`},
+		},
+		{
+			name:     "missing destination tag",
+			tagDst:   func(*testing.T, *memory.Store, ocispec.Descriptor, ocispec.Descriptor) {},
+			platform: amd64,
+		},
+		{
+			name: "copying the whole index",
+			tagDst: func(t *testing.T, dst *memory.Store, _, _ ocispec.Descriptor) {
+				t.Helper()
+				index, _ := newPlatformIndex(t, dst, "dst")
+				if err := dst.Tag(context.Background(), index, "v1"); err != nil {
+					t.Fatal(err)
+				}
+			},
+		},
+		{
+			name: "destination tag already has the manifest",
+			tagDst: func(t *testing.T, dst *memory.Store, _, srcManifest ocispec.Descriptor) {
+				t.Helper()
+				src := memory.New()
+				_, manifest := newPlatformIndex(t, src, "src")
+				if manifest.Digest != srcManifest.Digest {
+					t.Fatalf("manifest digest = %s, want %s", manifest.Digest, srcManifest.Digest)
+				}
+				if err := oras.CopyGraph(context.Background(), src, dst, manifest, oras.DefaultCopyGraphOptions); err != nil {
+					t.Fatal(err)
+				}
+				if err := dst.Tag(context.Background(), manifest, "v1"); err != nil {
+					t.Fatal(err)
+				}
+			},
+			platform: amd64,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			src := memory.New()
+			srcIndex, srcManifest := newPlatformIndex(t, src, "src")
+			if err := src.Tag(ctx, srcIndex, "src"); err != nil {
+				t.Fatal(err)
+			}
+			dst := memory.New()
+			tt.tagDst(t, dst, srcIndex, srcManifest)
+
+			var opts copyOptions
+			opts.From.Reference = "src"
+			opts.To.Reference = "v1"
+			opts.extraRefs = tt.extraRefs
+			if tt.platform != nil {
+				opts.Platforms.Platforms = []*ocispec.Platform{tt.platform}
+			}
+			var logs bytes.Buffer
+			logger := logrus.New()
+			logger.SetOutput(&logs)
+			recorder := &displaytest.CallRecorder{}
+			statusHandler := &displaytest.RecordingCopyStatusHandler{Recorder: recorder}
+			metadataHandler := &displaytest.RecordingCopyMetadataHandler{Recorder: recorder}
+
+			if err := copyAndFinalize(ctx, logger, statusHandler, metadataHandler, src, dst, &opts, true); err != nil {
+				t.Fatalf("copyAndFinalize() error = %v", err)
+			}
+
+			got := logs.String()
+			if len(tt.wantWarned) == 0 && strings.Contains(got, indexWarning) {
+				t.Errorf("logs = %q, want no index replacement warning", got)
+			}
+			for _, want := range tt.wantWarned {
+				if !strings.Contains(got, want+" "+indexWarning) || !strings.Contains(got, "copying replaces it") {
+					t.Errorf("logs = %q, want a warning for %s", got, want)
+				}
+			}
+			want := srcIndex
+			if tt.platform != nil {
+				want = srcManifest
+			}
+			for _, tag := range append([]string{"v1"}, tt.extraRefs...) {
+				desc, err := dst.Resolve(ctx, tag)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if desc.Digest != want.Digest {
+					t.Errorf("tag %s = %s, want %s", tag, desc.Digest, want.Digest)
+				}
+			}
+		})
+	}
+}
+
+func Test_copyAndFinalize_copiesWhenReplacementCheckFails(t *testing.T) {
+	ctx := context.Background()
+	src := memory.New()
+	srcIndex, _ := newPlatformIndex(t, src, "src")
+	if err := src.Tag(ctx, srcIndex, "src"); err != nil {
+		t.Fatal(err)
+	}
+
+	var opts copyOptions
+	opts.From.Reference = "src"
+	opts.To.Reference = "v1"
+	opts.Platforms.Platforms = []*ocispec.Platform{{OS: "linux", Architecture: "amd64"}}
+	var logs bytes.Buffer
+	logger := logrus.New()
+	logger.SetOutput(&logs)
+	logger.SetLevel(logrus.DebugLevel)
+	recorder := &displaytest.CallRecorder{}
+	statusHandler := &displaytest.RecordingCopyStatusHandler{Recorder: recorder}
+	metadataHandler := &displaytest.RecordingCopyMetadataHandler{Recorder: recorder}
+
+	dst := resolveFailTarget{Store: memory.New()}
+	if err := copyAndFinalize(ctx, logger, statusHandler, metadataHandler, src, dst, &opts, true); err != nil {
+		t.Fatalf("copyAndFinalize() error = %v", err)
+	}
+	if got := logs.String(); !strings.Contains(got, "level=debug") || !strings.Contains(got, `failed to resolve destination tag \"v1\"`) {
+		t.Errorf("logs = %q, want the failed lookup at debug level", got)
+	}
+	if _, err := dst.Store.Resolve(ctx, "v1"); err != nil {
+		t.Errorf("v1 not tagged after the copy: %v", err)
 	}
 }
