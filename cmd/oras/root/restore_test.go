@@ -202,7 +202,7 @@ func Test_warnIfReplacingIndex(t *testing.T) {
 			logger := logrus.New()
 			logger.SetOutput(&logs)
 			logger.SetFormatter(&logrus.TextFormatter{DisableTimestamp: true})
-			warnIfReplacingIndex(ctx, target, "v1", root, logger)
+			warnIfReplacingIndex(ctx, target, "v1", root, "restoring", logger)
 
 			gotWarning := strings.Contains(logs.String(), "level=warning")
 			if gotWarning != tt.wantWarning {

@@ -57,3 +57,29 @@ func TestValidateExtraTags(t *testing.T) {
 		})
 	}
 }
+
+func TestTarget_ExtraTagReference(t *testing.T) {
+	tests := []struct {
+		name   string
+		target Target
+		want   string
+	}{
+		{
+			name:   "remote target",
+			target: Target{Type: TargetTypeRemote, Reference: "v1"},
+			want:   "v2",
+		},
+		{
+			name:   "OCI layout path with a repository-qualified reference",
+			target: Target{Type: TargetTypeOCILayout, Reference: "localhost:5000/repo:v1"},
+			want:   "localhost:5000/repo:v2",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.target.ExtraTagReference("v2"); got != tt.want {
+				t.Errorf("ExtraTagReference() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

@@ -242,7 +242,7 @@ func doRestore(
 			}
 			targets[dstRepos[i]] = dstRepo
 		}
-		warnIfReplacingIndex(ctx, dstRepo, tag, roots[i], logger)
+		warnIfReplacingIndex(ctx, dstRepo, tag, roots[i], "restoring", logger)
 		if opts.dryRun {
 			if err := metadataHandler.OnArtifactPushed(srcRefs[i], dstRef, referrerCount); err != nil {
 				return err
@@ -280,9 +280,10 @@ func doRestore(
 	return metadataHandler.OnRestoreCompleted(len(tags), opts.target, duration)
 }
 
-// warnIfReplacingIndex warns when restoring a single manifest would narrow an
-// existing multi-platform tag. Resolving the destination is advisory only.
-func warnIfReplacingIndex(ctx context.Context, dst oras.ReadOnlyTarget, tag string, root ocispec.Descriptor, logger logrus.FieldLogger) {
+// warnIfReplacingIndex warns when pushing a single manifest would narrow an
+// existing multi-platform tag. action names the command's operation in the
+// warning, such as "restoring". Resolving the destination is advisory only.
+func warnIfReplacingIndex(ctx context.Context, dst oras.ReadOnlyTarget, tag string, root ocispec.Descriptor, action string, logger logrus.FieldLogger) {
 	existing, err := dst.Resolve(ctx, tag)
 	if errors.Is(err, errdef.ErrNotFound) {
 		return
@@ -292,7 +293,7 @@ func warnIfReplacingIndex(ctx context.Context, dst oras.ReadOnlyTarget, tag stri
 		return
 	}
 	if existing.Digest != root.Digest && descriptor.IsIndex(existing) && !descriptor.IsIndex(root) {
-		logger.Warnf("tag %q currently points to multi-platform index %s; restoring replaces it with a single-platform manifest", tag, existing.Digest)
+		logger.Warnf("tag %q currently points to multi-platform index %s; %s replaces it with a single-platform manifest", tag, existing.Digest, action)
 	}
 }
 
