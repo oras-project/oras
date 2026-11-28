@@ -30,6 +30,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
@@ -124,10 +125,8 @@ func (b *layoutBuilder) image(subject *ocispec.Descriptor, layers ...ocispec.Des
 	return manifest, config
 }
 
-func (b *layoutBuilder) tag(desc ocispec.Descriptor, name string) {
+func (b *layoutBuilder) writeIndex() {
 	b.t.Helper()
-	desc.Annotations = map[string]string{ocispec.AnnotationRefName: name}
-	b.index.Manifests = append(b.index.Manifests, desc)
 	data, err := json.Marshal(b.index)
 	if err != nil {
 		b.t.Fatal(err)
@@ -135,6 +134,18 @@ func (b *layoutBuilder) tag(desc ocispec.Descriptor, name string) {
 	if err := os.WriteFile(filepath.Join(b.dir, ocispec.ImageIndexFile), data, 0o644); err != nil {
 		b.t.Fatal(err)
 	}
+}
+
+func (b *layoutBuilder) addIndex(desc ocispec.Descriptor) {
+	b.t.Helper()
+	b.index.Manifests = append(b.index.Manifests, desc)
+	b.writeIndex()
+}
+
+func (b *layoutBuilder) tag(desc ocispec.Descriptor, name string) {
+	b.t.Helper()
+	desc.Annotations = map[string]string{ocispec.AnnotationRefName: name}
+	b.addIndex(desc)
 }
 
 // tarball packs the layout into a tar archive and returns its path.
@@ -181,6 +192,15 @@ func runLayoutCheck(t *testing.T, layoutPath, ref string, platform *ocispec.Plat
 	return runCheckOn(context.Background(), layout, ref, true, platform)
 }
 
+func runWholeLayoutCheck(t *testing.T, layoutPath string) (string, error) {
+	t.Helper()
+	var out bytes.Buffer
+	printer := output.NewPrinter(&out, &out)
+	printer.Verbose = true
+	err := doCheckWholeLayout(context.Background(), layoutPath, 0, printer)
+	return out.String(), err
+}
+
 func runCheckOn(ctx context.Context, src oras.ReadOnlyTarget, ref string, isLayout bool, platform *ocispec.Platform) (string, error) {
 	var out bytes.Buffer
 	resolveOpts := oras.DefaultResolveOptions
@@ -194,7 +214,7 @@ func runCheckOn(ctx context.Context, src oras.ReadOnlyTarget, ref string, isLayo
 func summary(out string) []string {
 	var lines []string
 	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
-		for _, prefix := range []string{"Checked ", "Missing:", "Corrupt:", "Invalid:", "Unable to check:", "Warning:", "Not checked:"} {
+		for _, prefix := range []string{"Checked ", "Layout problems:", "Missing:", "Corrupt:", "Invalid:", "Unable to check:", "Warning:", "Not checked:", "Note:"} {
 			if strings.HasPrefix(line, prefix) {
 				lines = append(lines, line)
 				break
@@ -1180,8 +1200,42 @@ func Test_checkCmd(t *testing.T) {
 			t.Errorf("out = %q, want a Missing line", out)
 		}
 	})
-	t.Run("no reference", func(t *testing.T) {
-		if _, err := runCheckCmd(t, "--oci-layout", b.dir); err == nil || !strings.Contains(err.Error(), "no tag or digest specified") {
+	t.Run("whole layout directory via --oci-layout", func(t *testing.T) {
+		out, err := runCheckCmd(t, "--oci-layout", b.dir)
+		if err != nil || !strings.Contains(out, "Checked 3 nodes: 3 verified, 0 failed") {
+			t.Errorf("err = %v, out = %q", err, out)
+		}
+	})
+	t.Run("whole layout directory via --oci-layout-path", func(t *testing.T) {
+		out, err := runCheckCmd(t, "--oci-layout-path", b.dir)
+		if err != nil || !strings.Contains(out, "Checked 3 nodes: 3 verified, 0 failed") {
+			t.Errorf("err = %v, out = %q", err, out)
+		}
+	})
+	t.Run("whole layout archive via --oci-layout", func(t *testing.T) {
+		out, err := runCheckCmd(t, "--oci-layout", b.tarball())
+		if err != nil || !strings.Contains(out, "Checked 3 nodes: 3 verified, 0 failed") || !strings.Contains(out, "Not checked: unreferenced blobs and stray files") {
+			t.Errorf("err = %v, out = %q", err, out)
+		}
+	})
+	t.Run("whole layout archive via --oci-layout-path", func(t *testing.T) {
+		out, err := runCheckCmd(t, "--oci-layout-path", b.tarball())
+		if err != nil || !strings.Contains(out, "Checked 3 nodes: 3 verified, 0 failed") || !strings.Contains(out, "Not checked: unreferenced blobs and stray files") {
+			t.Errorf("err = %v, out = %q", err, out)
+		}
+	})
+	t.Run("whole layout with --platform fails", func(t *testing.T) {
+		if _, err := runCheckCmd(t, "--platform", "linux/arm64", "--oci-layout", b.dir); err == nil || !strings.Contains(err.Error(), "--platform") {
+			t.Errorf("err = %v", err)
+		}
+	})
+	t.Run("no reference for registry", func(t *testing.T) {
+		if _, err := runCheckCmd(t, "localhost:5000/hello-world"); err == nil || !strings.Contains(err.Error(), "no tag or digest specified") {
+			t.Errorf("err = %v", err)
+		}
+	})
+	t.Run("trailing colon without reference", func(t *testing.T) {
+		if _, err := runCheckCmd(t, "--oci-layout", b.dir+":"); err == nil || !strings.Contains(err.Error(), "no tag or digest specified") {
 			t.Errorf("err = %v", err)
 		}
 	})
@@ -1193,6 +1247,11 @@ func Test_checkCmd(t *testing.T) {
 	t.Run("two arguments", func(t *testing.T) {
 		if _, err := runCheckCmd(t, "--oci-layout", b.dir+":v1", "other"); err == nil {
 			t.Error("two arguments were accepted")
+		}
+	})
+	t.Run("two arguments with --oci-layout-path", func(t *testing.T) {
+		if _, err := runCheckCmd(t, "--oci-layout-path", b.dir, "v1", "other"); err == nil {
+			t.Error("two arguments with --oci-layout-path were accepted")
 		}
 	})
 	t.Run("a path that does not exist", func(t *testing.T) {
@@ -1272,4 +1331,539 @@ func Test_checkCmd_registry(t *testing.T) {
 			t.Errorf("err = %v", err)
 		}
 	})
+}
+
+func Test_checkWholeLayout_directory(t *testing.T) {
+	t.Run("intact layout with multiple tags and a shared layer", func(t *testing.T) {
+		b := newLayoutBuilder(t)
+		shared := b.blob(testLayerType, []byte("shared layer"))
+		extra := b.blob(testLayerType, []byte("second layer"))
+		m1, _ := b.image(nil, shared)
+		m2, _ := b.image(nil, shared, extra)
+		b.tag(m1, "v1")
+		b.tag(m2, "v2")
+
+		out, err := runWholeLayoutCheck(t, b.dir)
+		if err != nil {
+			t.Fatalf("unexpected error: %v\noutput:\n%s", err, out)
+		}
+		// 2 manifests + 1 shared config + 2 layers = 5 unique blobs
+		lines := summary(out)
+		if len(lines) != 1 || lines[0] != "Checked 5 nodes: 5 verified, 0 failed" {
+			t.Errorf("summary = %q, want 5 verified, 0 failed", lines)
+		}
+	})
+
+	t.Run("manifest with wrong layer size in descriptor", func(t *testing.T) {
+		b := newLayoutBuilder(t)
+		layer := b.blob(testLayerType, []byte("real content"))
+		wrongSizeLayer := layer
+		wrongSizeLayer.Size += 10
+		m, _ := b.image(nil, wrongSizeLayer)
+		b.tag(m, "v1")
+
+		out, err := runWholeLayoutCheck(t, b.dir)
+		if err == nil {
+			t.Fatalf("expected error, got nil\noutput:\n%s", out)
+		}
+		lines := summary(out)
+		if len(lines) != 2 || lines[0] != "Checked 3 nodes: 2 verified, 1 failed" || !strings.HasPrefix(lines[1], "Corrupt: "+testLayerType+" "+layer.Digest.String()+":") {
+			t.Errorf("summary = %q, err = %v", lines, err)
+		}
+	})
+
+	t.Run("index.json types an image manifest as an index with a missing layer", func(t *testing.T) {
+		b := newLayoutBuilder(t)
+		layer := b.blob(testLayerType, []byte("gone"))
+		m, _ := b.image(nil, layer)
+		if err := os.Remove(b.blobPath(layer)); err != nil {
+			t.Fatal(err)
+		}
+		m.MediaType = ocispec.MediaTypeImageIndex
+		b.tag(m, "v1")
+
+		out, err := runWholeLayoutCheck(t, b.dir)
+		if err == nil {
+			t.Fatalf("expected error, got nil\noutput:\n%s", out)
+		}
+		if !strings.Contains(out, "Invalid: "+ocispec.MediaTypeImageIndex+" "+m.Digest.String()+":") {
+			t.Errorf("want Invalid line for mistyped manifest, got:\n%s", out)
+		}
+	})
+
+	t.Run("corrupt index.json still checks blobs", func(t *testing.T) {
+		b := newLayoutBuilder(t)
+		layer := b.blob(testLayerType, []byte("layer data"))
+		b.writeBlob(layer, []byte("tampered!!"))
+		if err := os.WriteFile(filepath.Join(b.dir, ocispec.ImageIndexFile), []byte("{not json"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		out, err := runWholeLayoutCheck(t, b.dir)
+		if err == nil {
+			t.Fatalf("expected error, got nil\noutput:\n%s", out)
+		}
+		if !strings.Contains(out, "Invalid: index.json:") {
+			t.Errorf("want Invalid: index.json line, got:\n%s", out)
+		}
+		if !strings.Contains(out, "Corrupt: "+layer.Digest.String()+":") {
+			t.Errorf("want Corrupt line for tampered blob, got:\n%s", out)
+		}
+	})
+
+	t.Run("missing index.json and corrupt oci-layout", func(t *testing.T) {
+		b := newLayoutBuilder(t)
+		b.blob(testLayerType, []byte("blob"))
+		if err := os.WriteFile(filepath.Join(b.dir, ocispec.ImageLayoutFile), []byte(`{"imageLayoutVersion":"2.0.0"}`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		out, err := runWholeLayoutCheck(t, b.dir)
+		if err == nil {
+			t.Fatalf("expected error, got nil\noutput:\n%s", out)
+		}
+		if !strings.Contains(out, "Checked 0 nodes: 0 verified, 0 failed") {
+			t.Errorf("want Checked 0 nodes: 0 verified, 0 failed, got:\n%s", out)
+		}
+		if !strings.Contains(out, "Layout problems: 2") {
+			t.Errorf("want Layout problems: 2, got:\n%s", out)
+		}
+		if !strings.Contains(out, "Invalid: index.json:") {
+			t.Errorf("want Invalid: index.json line, got:\n%s", out)
+		}
+		if !strings.Contains(out, "Invalid: oci-layout:") {
+			t.Errorf("want Invalid: oci-layout line, got:\n%s", out)
+		}
+	})
+
+	t.Run("interrupted write leftover in ingest is informational", func(t *testing.T) {
+		b := newLayoutBuilder(t)
+		m, _ := b.image(nil, b.blob(testLayerType, []byte("ok")))
+		b.tag(m, "v1")
+		ingestDir := filepath.Join(b.dir, "ingest")
+		if err := os.MkdirAll(ingestDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(ingestDir, "partial"), []byte("half written"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		out, err := runWholeLayoutCheck(t, b.dir)
+		if err != nil {
+			t.Fatalf("leftover should be informational, got err = %v\noutput:\n%s", err, out)
+		}
+		if !strings.Contains(out, "Checked 3 nodes: 3 verified, 0 failed") {
+			t.Errorf("unexpected summary:\n%s", out)
+		}
+		if !strings.Contains(out, "Note: ingest") || !strings.Contains(out, "leftover from an interrupted write") {
+			t.Errorf("want leftover Note line, got:\n%s", out)
+		}
+	})
+
+	t.Run("foreign layer absent passes with note", func(t *testing.T) {
+		b := newLayoutBuilder(t)
+		local := b.blob(testLayerType, []byte("local"))
+		foreign := ocispec.Descriptor{
+			MediaType: "application/vnd.oci.image.layer.nondistributable.v1.tar",
+			Digest:    digest.FromString("remote foreign layer"),
+			Size:      42,
+			URLs:      []string{"https://example.com/layer"},
+		}
+		m, _ := b.image(nil, local, foreign)
+		b.tag(m, "v1")
+
+		out, err := runWholeLayoutCheck(t, b.dir)
+		if err != nil {
+			t.Fatalf("absent foreign layer should pass, got err = %v\noutput:\n%s", err, out)
+		}
+		lines := summary(out)
+		if len(lines) != 2 || lines[0] != "Checked 3 nodes: 3 verified, 0 failed" || !strings.Contains(lines[1], "Not checked: 1 foreign layers") {
+			t.Errorf("summary = %q", lines)
+		}
+	})
+
+	t.Run("corrupt referrer manifest is reported once", func(t *testing.T) {
+		b := newLayoutBuilder(t)
+		subj, _ := b.image(nil, b.blob(testLayerType, []byte("subject layer")))
+		b.tag(subj, "v1")
+		ref, _ := b.image(&subj, b.blob(testLayerType, []byte("sig layer")))
+		b.addIndex(ref)
+		// Corrupt the referrer manifest bytes (same length so it's a digest mismatch).
+		corrupt := bytes.Repeat([]byte("x"), int(ref.Size))
+		b.writeBlob(ref, corrupt)
+
+		out, err := runWholeLayoutCheck(t, b.dir)
+		if err == nil {
+			t.Fatalf("expected error, got nil\noutput:\n%s", out)
+		}
+		lines := summary(out)
+		corruptCount := 0
+		for _, line := range lines {
+			if strings.Contains(line, ref.Digest.String()) {
+				corruptCount++
+			}
+			if strings.HasPrefix(line, "Unable to check:") {
+				t.Errorf("corrupt referrer should not also be reported as Unable to check: %q", line)
+			}
+		}
+		if corruptCount != 1 {
+			t.Errorf("expected referrer digest once in summary, got %d times in %q", corruptCount, lines)
+		}
+		if !strings.Contains(out, "Corrupt: "+ocispec.MediaTypeImageManifest+" "+ref.Digest.String()+":") {
+			t.Errorf("want Corrupt line for referrer, got:\n%s", out)
+		}
+	})
+
+	t.Run("referrer listed in index.json but missing fails", func(t *testing.T) {
+		b := newLayoutBuilder(t)
+		subj, _ := b.image(nil, b.blob(testLayerType, []byte("subject")))
+		b.tag(subj, "v1")
+		missingRef := ocispec.Descriptor{
+			MediaType: ocispec.MediaTypeImageManifest,
+			Digest:    digest.FromString("missing referrer"),
+			Size:      100,
+		}
+		b.addIndex(missingRef)
+
+		out, err := runWholeLayoutCheck(t, b.dir)
+		if err == nil {
+			t.Fatalf("expected error, got nil\noutput:\n%s", out)
+		}
+		if !strings.Contains(out, "Missing: "+ocispec.MediaTypeImageManifest+" "+missingRef.Digest.String()+":") {
+			t.Errorf("want Missing line for missing referrer in index.json, got:\n%s", out)
+		}
+	})
+
+	t.Run("absent subject not in index.json is a warning", func(t *testing.T) {
+		b := newLayoutBuilder(t)
+		absentSubj := ocispec.Descriptor{
+			MediaType: ocispec.MediaTypeImageManifest,
+			Digest:    digest.FromString("absent subject"),
+			Size:      55,
+		}
+		ref, _ := b.image(&absentSubj, b.blob(testLayerType, []byte("sig")))
+		b.tag(ref, "sig")
+
+		out, err := runWholeLayoutCheck(t, b.dir)
+		if err != nil {
+			t.Fatalf("absent subject should warn and pass, got err = %v\noutput:\n%s", err, out)
+		}
+		if !strings.Contains(out, "Warning: the subject "+absentSubj.Digest.String()) {
+			t.Errorf("want Warning line for absent subject, got:\n%s", out)
+		}
+	})
+
+	t.Run("layout with no tags reports unreferenced blobs as info", func(t *testing.T) {
+		b := newLayoutBuilder(t)
+		b.blob(testLayerType, []byte("orphan 1"))
+		b.blob(testLayerType, []byte("orphan 2"))
+		b.writeIndex() // empty manifests array
+
+		out, err := runWholeLayoutCheck(t, b.dir)
+		if err != nil {
+			t.Fatalf("unreferenced intact blobs should pass, got err = %v\noutput:\n%s", err, out)
+		}
+		lines := summary(out)
+		if len(lines) != 2 || lines[0] != "Checked 0 nodes: 0 verified, 0 failed" || !strings.Contains(lines[1], "Note: 2 unreferenced blobs") {
+			t.Errorf("summary = %q", lines)
+		}
+	})
+
+	t.Run("corrupt unreferenced blob fails", func(t *testing.T) {
+		b := newLayoutBuilder(t)
+		orphan := b.blob(testLayerType, []byte("orphan"))
+		b.writeBlob(orphan, []byte("broken"))
+		b.writeIndex()
+
+		out, err := runWholeLayoutCheck(t, b.dir)
+		if err == nil {
+			t.Fatalf("expected error, got nil\noutput:\n%s", out)
+		}
+		if !strings.Contains(out, "Corrupt: "+orphan.Digest.String()+":") {
+			t.Errorf("want Corrupt line for unreferenced blob, got:\n%s", out)
+		}
+	})
+
+	t.Run("stray file and unsupported algorithm in blobs are unable to check", func(t *testing.T) {
+		b := newLayoutBuilder(t)
+		m, _ := b.image(nil, b.blob(testLayerType, []byte("ok")))
+		b.tag(m, "v1")
+		if err := os.WriteFile(filepath.Join(b.dir, "blobs", "stray.txt"), []byte("oops"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Join(b.dir, "blobs", "md5"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(b.dir, "blobs", "md5", "d41d8cd98f00b204e9800998ecf8427e"), nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		out, err := runWholeLayoutCheck(t, b.dir)
+		if err == nil {
+			t.Fatalf("expected error, got nil\noutput:\n%s", out)
+		}
+		if !strings.Contains(err.Error(), "2 layout problems") {
+			t.Errorf("err = %v, want 2 layout problems", err)
+		}
+		lines := summary(out)
+		if len(lines) < 2 || lines[0] != "Checked 3 nodes: 3 verified, 0 failed" || lines[1] != "Layout problems: 2" {
+			t.Errorf("summary = %q, want 3 verified/0 failed and 2 layout problems", lines)
+		}
+		if !strings.Contains(out, "Unable to check: blobs/stray.txt:") {
+			t.Errorf("want Unable to check for stray file, got:\n%s", out)
+		}
+		if !strings.Contains(out, "Unable to check: blobs/md5") {
+			t.Errorf("want Unable to check for unsupported alg, got:\n%s", out)
+		}
+	})
+
+	t.Run("wrong path or directory without blobs", func(t *testing.T) {
+		if _, err := runWholeLayoutCheck(t, filepath.Join(t.TempDir(), "does-not-exist")); err == nil || !strings.Contains(err.Error(), "invalid argument") {
+			t.Errorf("missing path err = %v", err)
+		}
+		emptyDir := t.TempDir()
+		if _, err := runWholeLayoutCheck(t, emptyDir); err == nil || !strings.Contains(err.Error(), "not an OCI image layout") {
+			t.Errorf("dir without blobs err = %v", err)
+		}
+	})
+
+	t.Run("cancellation stops without summary", func(t *testing.T) {
+		b := newLayoutBuilder(t)
+		m, _ := b.image(nil, b.blob(testLayerType, []byte("ok")))
+		b.tag(m, "v1")
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		var out bytes.Buffer
+		err := doCheckWholeLayout(ctx, b.dir, 1, output.NewPrinter(&out, &out))
+		if !errors.Is(err, context.Canceled) {
+			t.Errorf("err = %v, want context.Canceled", err)
+		}
+		if len(summary(out.String())) != 0 {
+			t.Errorf("cancelled check should print no summary, got:\n%s", out.String())
+		}
+	})
+}
+
+func Test_checkWholeLayout_tar(t *testing.T) {
+	t.Run("intact multi-tag tar archive with shared layer", func(t *testing.T) {
+		b := newLayoutBuilder(t)
+		shared := b.blob(testLayerType, []byte("shared"))
+		m1, _ := b.image(nil, shared)
+		m2, _ := b.image(nil, shared, b.blob(testLayerType, []byte("extra")))
+		b.tag(m1, "v1")
+		b.tag(m2, "v2")
+
+		out, err := runWholeLayoutCheck(t, b.tarball())
+		if err != nil {
+			t.Fatalf("unexpected error: %v\noutput:\n%s", err, out)
+		}
+		lines := summary(out)
+		if len(lines) != 2 || lines[0] != "Checked 5 nodes: 5 verified, 0 failed" || !strings.Contains(lines[1], "Not checked: unreferenced blobs and stray files are not checked in a tar archive") {
+			t.Errorf("summary = %q", lines)
+		}
+	})
+
+	t.Run("corrupt layer in tar archive", func(t *testing.T) {
+		b := newLayoutBuilder(t)
+		layer := b.blob(testLayerType, []byte("good"))
+		m, _ := b.image(nil, layer)
+		b.tag(m, "v1")
+		b.writeBlob(layer, []byte("evil"))
+
+		out, err := runWholeLayoutCheck(t, b.tarball())
+		if err == nil || !strings.Contains(out, "Corrupt: "+testLayerType+" "+layer.Digest.String()+":") {
+			t.Errorf("err = %v, out = %q", err, out)
+		}
+	})
+
+	t.Run("missing layer in tar archive", func(t *testing.T) {
+		b := newLayoutBuilder(t)
+		layer := b.blob(testLayerType, []byte("gone"))
+		m, _ := b.image(nil, layer)
+		b.tag(m, "v1")
+		if err := os.Remove(b.blobPath(layer)); err != nil {
+			t.Fatal(err)
+		}
+
+		out, err := runWholeLayoutCheck(t, b.tarball())
+		if err == nil || !strings.Contains(out, "Missing: "+testLayerType+" "+layer.Digest.String()+":") {
+			t.Errorf("err = %v, out = %q", err, out)
+		}
+	})
+
+	t.Run("wrong layer size in tar archive", func(t *testing.T) {
+		b := newLayoutBuilder(t)
+		layer := b.blob(testLayerType, []byte("real content"))
+		wrong := layer
+		wrong.Size -= 3
+		m, _ := b.image(nil, wrong)
+		b.tag(m, "v1")
+
+		out, err := runWholeLayoutCheck(t, b.tarball())
+		if err == nil || !strings.Contains(out, "Corrupt: "+testLayerType+" "+layer.Digest.String()+":") {
+			t.Errorf("err = %v, out = %q", err, out)
+		}
+	})
+
+	t.Run("foreign layer absent in tar archive passes", func(t *testing.T) {
+		b := newLayoutBuilder(t)
+		foreign := ocispec.Descriptor{
+			MediaType: "application/vnd.oci.image.layer.nondistributable.v1.tar",
+			Digest:    digest.FromString("remote"),
+			Size:      10,
+			URLs:      []string{"https://example.com/layer"},
+		}
+		m, _ := b.image(nil, b.blob(testLayerType, []byte("ok")), foreign)
+		b.tag(m, "v1")
+
+		out, err := runWholeLayoutCheck(t, b.tarball())
+		if err != nil {
+			t.Fatalf("unexpected error: %v\noutput:\n%s", err, out)
+		}
+		if !strings.Contains(out, "Not checked: 1 foreign layers") || !strings.Contains(out, "Not checked: unreferenced blobs and stray files") {
+			t.Errorf("unexpected output:\n%s", out)
+		}
+	})
+
+	t.Run("missing oci-layout in tar archive", func(t *testing.T) {
+		b := newLayoutBuilder(t)
+		m, _ := b.image(nil, b.blob(testLayerType, []byte("ok")))
+		b.tag(m, "v1")
+		if err := os.Remove(filepath.Join(b.dir, ocispec.ImageLayoutFile)); err != nil {
+			t.Fatal(err)
+		}
+
+		out, err := runWholeLayoutCheck(t, b.tarball())
+		if err == nil {
+			t.Fatalf("expected error, got nil\noutput:\n%s", out)
+		}
+		if !strings.Contains(out, "Checked 3 nodes: 3 verified, 0 failed") {
+			t.Errorf("want Checked 3 nodes: 3 verified, 0 failed, got:\n%s", out)
+		}
+		if !strings.Contains(out, "Layout problems: 1") {
+			t.Errorf("want Layout problems: 1, got:\n%s", out)
+		}
+		if !strings.Contains(out, "Invalid: oci-layout:") {
+			t.Errorf("want Invalid: oci-layout line, got:\n%s", out)
+		}
+	})
+
+	t.Run("invalid oci-layout version in tar archive", func(t *testing.T) {
+		b := newLayoutBuilder(t)
+		m, _ := b.image(nil, b.blob(testLayerType, []byte("ok")))
+		b.tag(m, "v1")
+		if err := os.WriteFile(filepath.Join(b.dir, ocispec.ImageLayoutFile), []byte(`{"imageLayoutVersion":"2.0.0"}`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		out, err := runWholeLayoutCheck(t, b.tarball())
+		if err == nil {
+			t.Fatalf("expected error, got nil\noutput:\n%s", out)
+		}
+		if !strings.Contains(out, "Checked 3 nodes: 3 verified, 0 failed") {
+			t.Errorf("want Checked 3 nodes: 3 verified, 0 failed, got:\n%s", out)
+		}
+		if !strings.Contains(out, "Layout problems: 1") {
+			t.Errorf("want Layout problems: 1, got:\n%s", out)
+		}
+		if !strings.Contains(out, "Invalid: oci-layout:") {
+			t.Errorf("want Invalid: oci-layout line, got:\n%s", out)
+		}
+	})
+
+	t.Run("not a tar archive", func(t *testing.T) {
+		p := filepath.Join(t.TempDir(), "not-a-tar")
+		if err := os.WriteFile(p, []byte("plain text"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		_, err := runWholeLayoutCheck(t, p)
+		if err == nil || strings.Count(err.Error(), "not an OCI image layout") != 1 {
+			t.Errorf("err = %v, want single 'not an OCI image layout' prefix", err)
+		}
+	})
+}
+
+type countingStorage struct {
+	content.ReadOnlyStorage
+	fetches map[digest.Digest]*atomic.Int32
+}
+
+func (s *countingStorage) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
+	if c, ok := s.fetches[target.Digest]; ok {
+		c.Add(1)
+	}
+	return s.ReadOnlyStorage.Fetch(ctx, target)
+}
+
+func Test_checkWholeLayout_verifiedSetSkipsRereadingLayers(t *testing.T) {
+	b := newLayoutBuilder(t)
+	layer := b.blob(testLayerType, []byte("large layer"))
+	m1, _ := b.image(nil, layer)
+	wrongLayer := layer
+	wrongLayer.Size += 5
+	m2, _ := b.image(nil, wrongLayer)
+
+	storage := oci.NewStorageFromFS(os.DirFS(b.dir))
+	var layerReads atomic.Int32
+	counted := &countingStorage{
+		ReadOnlyStorage: storage,
+		fetches:         map[digest.Digest]*atomic.Int32{layer.Digest: &layerReads},
+	}
+
+	// Pre-seed VerifiedSet with the real on-disk size, as doCheckLayoutDir does.
+	verifiedSet := oras.NewVerifiedSet()
+	verifiedSet.Add(ocispec.Descriptor{Digest: layer.Digest, Size: layer.Size})
+
+	var out bytes.Buffer
+	c := &checker{
+		isLayout:  true,
+		printer:   output.NewPrinter(&out, &out),
+		bySubject: make(map[digest.Digest]bool),
+		byOther:   make(map[digest.Digest]bool),
+		foreign:   make(map[digest.Digest]bool),
+	}
+
+	// Walking m1 (matching size) must not re-read the layer at all.
+	res1, err := c.walkLayoutManifests(context.Background(), counted, []ocispec.Descriptor{m1}, verifiedSet, 2)
+	if err != nil || len(res1.failures) != 0 {
+		t.Fatalf("m1 walk failed: err=%v, failures=%v", err, res1.failures)
+	}
+	if got := layerReads.Load(); got != 0 {
+		t.Errorf("layer was read %d times despite VerifiedSet, want 0", got)
+	}
+
+	// Walking m2 (wrong descriptor size) must read the layer and flag Corrupt.
+	res2, err := c.walkLayoutManifests(context.Background(), counted, []ocispec.Descriptor{m2}, verifiedSet, 2)
+	if err != nil {
+		t.Fatalf("m2 walk returned unexpected error: %v", err)
+	}
+	if got := layerReads.Load(); got != 1 {
+		t.Errorf("wrong-size layer was read %d times, want 1", got)
+	}
+	if len(res2.failures) != 1 || res2.failures[0].class != classCorrupt {
+		t.Errorf("m2 failures = %+v, want 1 Corrupt failure", res2.failures)
+	}
+}
+
+func Test_blobPathDigest(t *testing.T) {
+	validDigest := digest.FromString("hello")
+	tests := []struct {
+		path   string
+		wantOK bool
+		want   digest.Digest
+	}{
+		{"blobs/sha256/" + validDigest.Encoded(), true, validDigest},
+		{"blobs/stray.txt", false, ""},
+		{"blobs/sha256/not-hex", false, ""},
+		{"blobs/sha256/" + validDigest.Encoded() + "/extra", false, ""},
+		{"blobs/md5/d41d8cd98f00b204e9800998ecf8427e", false, ""},
+		{"index.json", false, ""},
+	}
+	for _, tt := range tests {
+		got, ok := blobPathDigest(tt.path)
+		if ok != tt.wantOK || got != tt.want {
+			t.Errorf("blobPathDigest(%q) = (%q, %v), want (%q, %v)", tt.path, got, ok, tt.want, tt.wantOK)
+		}
+	}
 }

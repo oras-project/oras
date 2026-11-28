@@ -22,12 +22,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -62,15 +64,17 @@ func checkCmd() *cobra.Command {
 	var opts checkOptions
 
 	cmd := &cobra.Command{
-		Use:   "check [flags] <name>{:<tag>|@<digest>}",
-		Short: "[Experimental] Verify that an artifact is complete and intact",
-		Long: `[Experimental] Verify that an artifact is complete and intact
+		Use:   "check [flags] [<name>[:<tag>|@<digest>]]",
+		Short: "[Experimental] Verify that an artifact or OCI image layout is complete and intact",
+		Long: `[Experimental] Verify that an artifact or OCI image layout is complete and intact
 
 The check reads the manifest, config and every layer of the artifact, in a
 registry or an OCI image layout, and proves that each one is present and
-matches its digest and size. Every byte is downloaded or read. The check
-continues after a failure and reports every problem it finds, and the command
-exits with a non-zero status if any check fails.
+matches its digest and size. Every byte is downloaded or read. When an OCI
+image layout is given without a tag or digest, the whole layout is checked, as
+a directory or a tar archive. The check continues after a failure and reports
+every problem it finds, and the command exits with a non-zero status if any
+check fails.
 
 The check only proves that content matches its digests. It does not detect that
 a tag was moved to other content, and it does not prove who published the
@@ -86,12 +90,24 @@ Example - Check an artifact by digest:
 Example - Check an artifact in an OCI image layout:
   oras check --oci-layout ./layout-dir:v1
 
+Example - Check a whole OCI image layout directory or tar archive:
+  oras check --oci-layout ./layout-dir
+  oras check --oci-layout ./layout.tar
+  oras check --oci-layout-path ./layout-dir
+
 Example - Check the image for one platform of a multi-platform artifact:
   oras check --platform linux/arm64 localhost:5000/hello-world:v1
 `,
-		Args: oerrors.CheckArgs(argument.Exactly(1), "the artifact reference to check"),
+		Args: func(cmd *cobra.Command, args []string) error {
+			if opts.Path != "" {
+				return oerrors.CheckArgs(argument.AtMost(1), "the artifact reference to check")(cmd, args)
+			}
+			return oerrors.CheckArgs(argument.Exactly(1), "the artifact reference to check")(cmd, args)
+		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			opts.RawReference = args[0]
+			if len(args) > 0 {
+				opts.RawReference = args[0]
+			}
 			return option.Parse(cmd, &opts)
 		},
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -107,14 +123,18 @@ Example - Check the image for one platform of a multi-platform artifact:
 
 func runCheck(cmd *cobra.Command, opts *checkOptions) error {
 	ctx, logger := command.GetLogger(cmd, &opts.Common)
+	isLayout := opts.Type == option.TargetTypeOCILayout
+	if isLayout && opts.Reference == "" && (!opts.IsOCILayout || opts.Path == opts.RawReference) {
+		if opts.Platform.Platform != nil {
+			return errors.New("--platform cannot be used when checking a whole OCI image layout")
+		}
+		return doCheckWholeLayout(ctx, opts.Path, opts.concurrency, opts.Printer)
+	}
 	if err := opts.EnsureReferenceNotEmpty(cmd, true); err != nil {
 		return err
 	}
 
-	var (
-		src      oras.ReadOnlyTarget
-		isLayout = opts.Type == option.TargetTypeOCILayout
-	)
+	var src oras.ReadOnlyTarget
 	if isLayout {
 		layout, err := newCheckLayout(opts.Path)
 		if err != nil {
@@ -161,11 +181,23 @@ func (c checkClass) String() string {
 // errCheckInvalid marks content that is present but not a valid artifact node.
 var errCheckInvalid = errors.New("invalid content")
 
-// checkFinding is one failed node and the reason.
+// checkFinding is one failed node or layout problem and the reason.
 type checkFinding struct {
 	desc  ocispec.Descriptor
+	path  string
 	class checkClass
 	err   error
+}
+
+func (f checkFinding) label() string {
+	switch {
+	case f.desc.Digest != "" && f.desc.MediaType != "":
+		return f.desc.MediaType + " " + f.desc.Digest.String()
+	case f.desc.Digest != "":
+		return f.desc.Digest.String()
+	default:
+		return f.path
+	}
 }
 
 // checker holds the state shared by the concurrent callbacks of one check.
@@ -219,6 +251,363 @@ func doCheck(ctx context.Context, src oras.ReadOnlyTarget, reference string, res
 		return fmt.Errorf("check stopped before it finished: %w", err)
 	}
 	return c.summarize(report)
+}
+
+func doCheckWholeLayout(ctx context.Context, layoutPath string, concurrency int, printer *output.Printer) error {
+	info, err := os.Stat(layoutPath)
+	if err != nil {
+		return fmt.Errorf("invalid argument %q: %w", layoutPath, err)
+	}
+	if concurrency <= 0 {
+		concurrency = defaultCheckConcurrency
+	}
+	if info.IsDir() {
+		return doCheckLayoutDir(ctx, layoutPath, concurrency, printer)
+	}
+	return doCheckLayoutTar(ctx, layoutPath, concurrency, printer)
+}
+
+// doCheckLayoutDir verifies a whole OCI image layout directory by combining
+// oci.Verify (which sweeps blobs/, layout files and reachability) with the
+// manifest graph walk on every entry in index.json.
+func doCheckLayoutDir(ctx context.Context, layoutPath string, concurrency int, printer *output.Printer) error {
+	fsys := os.DirFS(layoutPath)
+	ociReport, err := oci.Verify(ctx, fsys, oci.VerifyOptions{Concurrency: concurrency})
+	if err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return fmt.Errorf("check stopped before it finished: %w", err)
+		}
+		return fmt.Errorf("%q is not an OCI image layout: %w", layoutPath, err)
+	}
+
+	// Seed VerifiedSet from blobs oci.Verify already hashed, using their sizes
+	// on disk so the manifest walk skips re-reading intact layers while still
+	// catching descriptor size mismatches.
+	verifiedSet := oras.NewVerifiedSet()
+	verifiedDigests := make(map[digest.Digest]bool, len(ociReport.Verified))
+	for _, entry := range ociReport.Verified {
+		dgst, ok := blobPathDigest(entry.Path)
+		if !ok {
+			continue
+		}
+		if info, err := fs.Stat(fsys, entry.Path); err == nil {
+			verifiedSet.Add(ocispec.Descriptor{Digest: dgst, Size: info.Size()})
+		}
+	}
+
+	c := &checker{
+		isLayout:  true,
+		printer:   printer,
+		bySubject: make(map[digest.Digest]bool),
+		byOther:   make(map[digest.Digest]bool),
+		foreign:   make(map[digest.Digest]bool),
+	}
+
+	var (
+		walkResult             layoutWalkResult
+		walkInvalidIndexDigest bool
+	)
+	if raw, err := os.ReadFile(filepath.Join(layoutPath, ocispec.ImageIndexFile)); err == nil {
+		var index ocispec.Index
+		if err := json.Unmarshal(raw, &index); err == nil {
+			for _, desc := range index.Manifests {
+				if desc.Digest.Validate() != nil {
+					walkInvalidIndexDigest = true
+				}
+			}
+			storage := oci.NewStorageFromFS(fsys)
+			walkResult, err = c.walkLayoutManifests(ctx, storage, index.Manifests, verifiedSet, concurrency)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	failures := walkResult.failures
+	warnings := walkResult.warnings
+	failedDigests := walkResult.failedDigests
+	if failedDigests == nil {
+		failedDigests = make(map[digest.Digest]bool)
+	}
+	for dgst := range walkResult.verified {
+		verifiedDigests[dgst] = true
+	}
+
+	for _, entry := range ociReport.Failed {
+		if dgst, ok := blobPathDigest(entry.Path); ok {
+			if failedDigests[dgst] {
+				continue
+			}
+			failedDigests[dgst] = true
+			failures = append(failures, checkFinding{
+				desc:  ocispec.Descriptor{Digest: dgst},
+				class: c.classify(entry.Reason),
+				err:   entry.Reason,
+			})
+			if !walkResult.printedFailed[dgst] {
+				if err := printer.PrintStatus(ocispec.Descriptor{Digest: dgst}, "Failed"); err != nil {
+					return err
+				}
+			}
+		} else {
+			failures = append(failures, checkFinding{
+				path:  entry.Path,
+				class: c.classify(entry.Reason),
+				err:   entry.Reason,
+			})
+		}
+	}
+
+	seenUnverifiable := make(map[string]bool)
+	for _, entry := range ociReport.Unverifiable {
+		if dgst, ok := blobPathDigest(entry.Path); ok {
+			if failedDigests[dgst] {
+				continue
+			}
+			failedDigests[dgst] = true
+			failures = append(failures, checkFinding{
+				desc:  ocispec.Descriptor{Digest: dgst},
+				class: classUnchecked,
+				err:   entry.Reason,
+			})
+			continue
+		}
+		if entry.Path == ocispec.ImageIndexFile && errors.Is(entry.Reason, errdef.ErrInvalidDigest) && walkInvalidIndexDigest {
+			continue
+		}
+		key := entry.Path + "\x00" + entry.Reason.Error()
+		if seenUnverifiable[key] {
+			continue
+		}
+		seenUnverifiable[key] = true
+		failures = append(failures, checkFinding{
+			path:  entry.Path,
+			class: classUnchecked,
+			err:   entry.Reason,
+		})
+	}
+
+	var leftovers []oci.LayoutFinding
+	for _, lf := range ociReport.Layout {
+		if lf.ModTime.IsZero() {
+			failures = append(failures, checkFinding{
+				path:  lf.Path,
+				class: classInvalid,
+				err:   lf.Reason,
+			})
+		} else {
+			leftovers = append(leftovers, lf)
+		}
+	}
+	sort.Slice(leftovers, func(i, j int) bool {
+		return leftovers[i].Path < leftovers[j].Path
+	})
+
+	// A blob that matched its path digest on disk may still have failed the
+	// manifest walk (for example, wrong descriptor size or invalid manifest
+	// shape), so remove any failed digest from the verified count.
+	for dgst := range failedDigests {
+		delete(verifiedDigests, dgst)
+	}
+	unprintedVerified := make([]digest.Digest, 0)
+	for dgst := range verifiedDigests {
+		if !walkResult.printedVerified[dgst] && !walkResult.printedFailed[dgst] {
+			unprintedVerified = append(unprintedVerified, dgst)
+		}
+	}
+	sort.Slice(unprintedVerified, func(i, j int) bool {
+		return unprintedVerified[i] < unprintedVerified[j]
+	})
+	for _, dgst := range unprintedVerified {
+		if err := printer.PrintStatus(ocispec.Descriptor{Digest: dgst}, "Verified"); err != nil {
+			return err
+		}
+	}
+
+	unreferenced := 0
+	for _, entry := range ociReport.Unreferenced {
+		if dgst, ok := blobPathDigest(entry.Path); ok && failedDigests[dgst] {
+			continue
+		}
+		unreferenced++
+	}
+
+	sortFindings(failures)
+	sortFindings(warnings)
+	return c.printSummary(len(verifiedDigests), failures, warnings, leftovers, unreferenced, false)
+}
+
+// doCheckLayoutTar verifies every entry in index.json of an OCI image layout
+// tar archive without extracting it.
+func doCheckLayoutTar(ctx context.Context, layoutPath string, concurrency int, printer *output.Printer) error {
+	layout, err := newCheckLayout(layoutPath)
+	if err != nil {
+		return err
+	}
+
+	c := &checker{
+		isLayout:  true,
+		printer:   printer,
+		bySubject: make(map[digest.Digest]bool),
+		byOther:   make(map[digest.Digest]bool),
+		foreign:   make(map[digest.Digest]bool),
+	}
+	walkResult, err := c.walkLayoutManifests(ctx, layout, layout.manifests, oras.NewVerifiedSet(), concurrency)
+	if err != nil {
+		return err
+	}
+	if f := checkTarOCILayout(layoutPath); f != nil {
+		walkResult.failures = append(walkResult.failures, *f)
+	}
+
+	sortFindings(walkResult.failures)
+	sortFindings(walkResult.warnings)
+	return c.printSummary(len(walkResult.verified), walkResult.failures, walkResult.warnings, nil, 0, true)
+}
+
+func checkTarOCILayout(layoutPath string) *checkFinding {
+	data, err := readTarFile(layoutPath, ocispec.ImageLayoutFile)
+	if err != nil {
+		if errors.Is(err, errdef.ErrNotFound) {
+			err = errdef.ErrNotFound
+		}
+		return &checkFinding{path: ocispec.ImageLayoutFile, class: classInvalid, err: err}
+	}
+	var layout ocispec.ImageLayout
+	if err := json.Unmarshal(data, &layout); err != nil {
+		return &checkFinding{path: ocispec.ImageLayoutFile, class: classInvalid, err: err}
+	}
+	if layout.Version != ocispec.ImageLayoutVersion {
+		return &checkFinding{
+			path:  ocispec.ImageLayoutFile,
+			class: classInvalid,
+			err:   fmt.Errorf("imageLayoutVersion %q: expected %q", layout.Version, ocispec.ImageLayoutVersion),
+		}
+	}
+	return nil
+}
+
+type layoutWalkResult struct {
+	verified        map[digest.Digest]bool
+	failures        []checkFinding
+	warnings        []checkFinding
+	failedDigests   map[digest.Digest]bool
+	printedVerified map[digest.Digest]bool
+	printedFailed   map[digest.Digest]bool
+}
+
+// walkLayoutManifests walks every descriptor in manifests, sharing verifiedSet
+// across calls so shared leaf blobs are not read more than once.
+func (c *checker) walkLayoutManifests(ctx context.Context, src content.ReadOnlyStorage, manifests []ocispec.Descriptor, verifiedSet *oras.VerifiedSet, concurrency int) (layoutWalkResult, error) {
+	result := layoutWalkResult{
+		verified:        make(map[digest.Digest]bool),
+		failedDigests:   make(map[digest.Digest]bool),
+		printedVerified: make(map[digest.Digest]bool),
+		printedFailed:   make(map[digest.Digest]bool),
+	}
+	c.mu.Lock()
+	for _, desc := range manifests {
+		if desc.Digest != "" {
+			// Every entry listed directly in index.json is required even if
+			// another manifest also points to it as a subject.
+			c.byOther[desc.Digest] = true
+		}
+	}
+	c.mu.Unlock()
+
+	var (
+		printMu   sync.Mutex
+		rawFailed []oras.FailedNode
+	)
+	printOnce := func(desc ocispec.Descriptor, failed bool) error {
+		printMu.Lock()
+		defer printMu.Unlock()
+		if failed {
+			if desc.Digest != "" && result.printedFailed[desc.Digest] {
+				return nil
+			}
+			if desc.Digest != "" {
+				result.printedFailed[desc.Digest] = true
+			}
+			return c.printer.PrintStatus(desc, "Failed")
+		}
+		if desc.Digest != "" && (result.printedVerified[desc.Digest] || result.printedFailed[desc.Digest]) {
+			return nil
+		}
+		if desc.Digest != "" {
+			result.printedVerified[desc.Digest] = true
+		}
+		return c.printer.PrintStatus(desc, "Verified")
+	}
+
+	for _, root := range manifests {
+		report, err := oras.VerifyGraph(ctx, src, root, oras.VerifyGraphOptions{
+			Concurrency:    concurrency,
+			KnownVerified:  verifiedSet,
+			FindSuccessors: c.findSuccessors,
+			PostVerify: func(_ context.Context, desc ocispec.Descriptor, verifyErr error) error {
+				return printOnce(desc, verifyErr != nil)
+			},
+			OnVerifySkipped: func(_ context.Context, desc ocispec.Descriptor) error {
+				return printOnce(desc, false)
+			},
+		})
+		if err != nil {
+			return layoutWalkResult{}, fmt.Errorf("check stopped before it finished: %w", err)
+		}
+		for _, desc := range report.Verified {
+			if desc.Digest != "" {
+				result.verified[desc.Digest] = true
+			}
+		}
+		for _, desc := range report.Skipped {
+			if desc.Digest != "" {
+				result.verified[desc.Digest] = true
+			}
+		}
+		rawFailed = append(rawFailed, report.Failed...)
+	}
+
+	seenWarnings := make(map[digest.Digest]bool)
+	for _, failed := range rawFailed {
+		finding := checkFinding{desc: failed.Descriptor, class: c.classify(failed.Err), err: failed.Err}
+		if c.isAbsentSubject(finding) {
+			if !seenWarnings[finding.desc.Digest] {
+				seenWarnings[finding.desc.Digest] = true
+				result.warnings = append(result.warnings, finding)
+			}
+			continue
+		}
+		if finding.desc.Digest != "" {
+			if result.failedDigests[finding.desc.Digest] {
+				continue
+			}
+			result.failedDigests[finding.desc.Digest] = true
+		}
+		result.failures = append(result.failures, finding)
+	}
+	for dgst := range result.failedDigests {
+		delete(result.verified, dgst)
+	}
+	return result, nil
+}
+
+// blobPathDigest extracts the digest from a layout blob path of the form
+// blobs/<algorithm>/<encoded>.
+func blobPathDigest(p string) (digest.Digest, bool) {
+	rest, ok := strings.CutPrefix(p, ocispec.ImageBlobsDir+"/")
+	if !ok {
+		return "", false
+	}
+	alg, encoded, ok := strings.Cut(rest, "/")
+	if !ok || strings.Contains(encoded, "/") {
+		return "", false
+	}
+	dgst := digest.NewDigestFromEncoded(digest.Algorithm(alg), encoded)
+	if err := dgst.Validate(); err != nil {
+		return "", false
+	}
+	return dgst, true
 }
 
 // findSuccessors reads a manifest or index, checks that its body matches the
@@ -282,15 +671,37 @@ func (c *checker) summarize(report *oras.VerifyGraphReport) error {
 	}
 	sortFindings(failures)
 	sortFindings(warnings)
+	return c.printSummary(len(report.Verified), failures, warnings, nil, 0, false)
+}
+
+func (c *checker) printSummary(verified int, failures, warnings []checkFinding, leftovers []oci.LayoutFinding, unreferenced int, isTar bool) error {
+	var nodeFailures, layoutProblems []checkFinding
+	for _, f := range failures {
+		if f.desc.Digest != "" {
+			nodeFailures = append(nodeFailures, f)
+		} else {
+			layoutProblems = append(layoutProblems, f)
+		}
+	}
 
 	// An absent subject is not a node of the target, so it is not counted.
-	total := len(report.Verified) + len(failures)
-	if err := c.printer.Println(fmt.Sprintf("Checked %d nodes: %d verified, %d failed", total, len(report.Verified), len(failures))); err != nil {
+	total := verified + len(nodeFailures)
+	if err := c.printer.Println(fmt.Sprintf("Checked %d nodes: %d verified, %d failed", total, verified, len(nodeFailures))); err != nil {
 		return err
 	}
-	for _, finding := range failures {
-		if err := c.printer.Println(fmt.Sprintf("%s: %s %s: %s", finding.class, finding.desc.MediaType, finding.desc.Digest, finding.err)); err != nil {
+	for _, finding := range nodeFailures {
+		if err := c.printer.Println(fmt.Sprintf("%s: %s: %s", finding.class, finding.label(), finding.err)); err != nil {
 			return err
+		}
+	}
+	if len(layoutProblems) > 0 {
+		if err := c.printer.Println(fmt.Sprintf("Layout problems: %d", len(layoutProblems))); err != nil {
+			return err
+		}
+		for _, finding := range layoutProblems {
+			if err := c.printer.Println(fmt.Sprintf("%s: %s: %s", finding.class, finding.label(), finding.err)); err != nil {
+				return err
+			}
 		}
 	}
 	for _, finding := range warnings {
@@ -306,11 +717,40 @@ func (c *checker) summarize(report *oras.VerifyGraphReport) error {
 			return err
 		}
 	}
-	if len(failures) > 0 {
+	if isTar {
+		if err := c.printer.Println("Not checked: unreferenced blobs and stray files are not checked in a tar archive"); err != nil {
+			return err
+		}
+	}
+	for _, lf := range leftovers {
+		if err := c.printer.Println(fmt.Sprintf("Note: %s is a leftover from an interrupted write (modified %s)", lf.Path, lf.ModTime.UTC().Format(time.RFC3339))); err != nil {
+			return err
+		}
+	}
+	if unreferenced == 1 {
+		if err := c.printer.Println("Note: 1 unreferenced blob is not reachable from any tag (reliable only when nothing is writing to the layout)"); err != nil {
+			return err
+		}
+	} else if unreferenced > 1 {
+		if err := c.printer.Println(fmt.Sprintf("Note: %d unreferenced blobs are not reachable from any tag (reliable only when nothing is writing to the layout)", unreferenced)); err != nil {
+			return err
+		}
+	}
+	if len(nodeFailures) > 0 || len(layoutProblems) > 0 {
 		// A plain error: it must not wrap errdef.ErrNotFound or an
 		// errcode.ErrorResponse, which Target.ModifyError would present as
 		// a registry error.
-		return fmt.Errorf("check failed: %d of %d nodes did not pass", len(failures), total)
+		switch {
+		case len(nodeFailures) > 0 && len(layoutProblems) > 0:
+			return fmt.Errorf("check failed: %d of %d nodes did not pass; %d layout problems", len(nodeFailures), total, len(layoutProblems))
+		case len(nodeFailures) > 0:
+			return fmt.Errorf("check failed: %d of %d nodes did not pass", len(nodeFailures), total)
+		default:
+			if len(layoutProblems) == 1 {
+				return errors.New("check failed: 1 layout problem")
+			}
+			return fmt.Errorf("check failed: %d layout problems", len(layoutProblems))
+		}
 	}
 	return nil
 }
@@ -360,7 +800,10 @@ func sortFindings(findings []checkFinding) {
 		if a.desc.MediaType != b.desc.MediaType {
 			return a.desc.MediaType < b.desc.MediaType
 		}
-		return a.desc.Digest < b.desc.Digest
+		if a.desc.Digest != b.desc.Digest {
+			return a.desc.Digest < b.desc.Digest
+		}
+		return a.path < b.path
 	})
 }
 

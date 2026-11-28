@@ -31,6 +31,13 @@ func AtLeast(cnt int) func(args []string) (bool, string) {
 	}
 }
 
+// AtMost checks if the number of arguments is less than or equal to cnt.
+func AtMost(cnt int) func(args []string) (bool, string) {
+	return func(args []string) (bool, string) {
+		return len(args) <= cnt, fmt.Sprintf("at most %d %s", cnt, noun(cnt))
+	}
+}
+
 // noun returns the correctly pluralized noun for cnt arguments, as specified in
 // docs/proposals/error-handling-guideline.md.
 func noun(cnt int) string {
