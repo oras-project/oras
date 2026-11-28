@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -34,6 +35,7 @@ import (
 	"github.com/oras-project/oras-go/v3/content/oci"
 	"github.com/sirupsen/logrus"
 	"oras.land/oras/cmd/oras/internal/display/displaytest"
+	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/internal/docker"
 	orasio "oras.land/oras/internal/io"
 )
@@ -696,5 +698,266 @@ func Test_parseRestoreTarget(t *testing.T) {
 				t.Errorf("parseRestoreTarget(%q) = %q, want %q", tt.target, got, tt.want)
 			}
 		})
+	}
+}
+
+func Test_parseIncludePattern(t *testing.T) {
+	tests := []struct {
+		pattern        string
+		wantRepository string
+		wantTag        bool
+		wantErr        bool
+	}{
+		{pattern: "library/alpine", wantRepository: "library/alpine"},
+		{pattern: "library/alpine:3.19.0", wantRepository: "library/alpine", wantTag: true},
+		{pattern: "registry.lan:5000/app", wantRepository: "registry.lan:5000/app"},
+		{pattern: "registry.lan:5000/app:v1", wantRepository: "registry.lan:5000/app", wantTag: true},
+		{pattern: "registry.lan:5000", wantRepository: "registry.lan", wantTag: true}, // a pattern without '/' is a repository
+		{pattern: "*:v1", wantRepository: "*", wantTag: true},
+		{pattern: "*", wantRepository: "*"},
+		{pattern: "library/alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412", wantErr: true},
+		{pattern: "library/alpine:", wantErr: true},
+		{pattern: ":v1", wantErr: true},
+		{pattern: "", wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.pattern, func(t *testing.T) {
+			got, err := parseIncludePattern(tt.pattern)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("parseIncludePattern(%q) error = %v, wantErr %v", tt.pattern, err, tt.wantErr)
+			}
+			if tt.wantErr {
+				return
+			}
+			if got.repositoryPart != tt.wantRepository {
+				t.Errorf("parseIncludePattern(%q) repository = %q, want %q", tt.pattern, got.repositoryPart, tt.wantRepository)
+			}
+			if (got.tag != nil) != tt.wantTag {
+				t.Errorf("parseIncludePattern(%q) has tag = %v, want %v", tt.pattern, got.tag != nil, tt.wantTag)
+			}
+		})
+	}
+}
+
+func Test_parseIncludePatterns(t *testing.T) {
+	got, err := parseIncludePatterns([]string{"library/alpine", "*:v1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Errorf("parseIncludePatterns() = %d patterns, want 2", len(got))
+	}
+	if _, err := parseIncludePatterns([]string{"library/alpine", "library/alpine:"}); err == nil {
+		t.Error("parseIncludePatterns() expected an error for an invalid pattern")
+	}
+}
+
+func Test_includePattern_matches(t *testing.T) {
+	tests := []struct {
+		pattern string
+		srcRef  string
+		want    bool
+	}{
+		// repository part, with and without the registry
+		{pattern: "library/alpine", srcRef: "docker.io/library/alpine:3.19.0", want: true},
+		{pattern: "docker.io/library/alpine", srcRef: "docker.io/library/alpine:3.19.0", want: true},
+		{pattern: "ghcr.io/library/alpine", srcRef: "docker.io/library/alpine:3.19.0", want: false},
+		{pattern: "alpine", srcRef: "docker.io/library/alpine:3.19.0", want: false}, // short names are not expanded
+		// tag part
+		{pattern: "library/alpine:3.19.0", srcRef: "docker.io/library/alpine:3.19.0", want: true},
+		{pattern: "library/alpine:3.20.0", srcRef: "docker.io/library/alpine:3.19.0", want: false},
+		{pattern: "library/alpine:3.*", srcRef: "docker.io/library/alpine:3.19.0", want: true},
+		{pattern: "library/alpine:3.*", srcRef: "docker.io/library/alpine:latest", want: false},
+		{pattern: "*:v1", srcRef: "docker.io/library/nginx:v1", want: true},
+		{pattern: "*:v1", srcRef: "docker.io/library/nginx:v2", want: false},
+		// '*' crosses '/' but never crosses from the repository into the tag
+		{pattern: "library/*", srcRef: "docker.io/library/team/app:v1", want: true},
+		{pattern: "*/alpine", srcRef: "docker.io/library/alpine:3.19.0", want: true},
+		{pattern: "library/alp*19", srcRef: "docker.io/library/alpine:3.19", want: false},
+		// registries with a port
+		{pattern: "registry.lan:5000/app", srcRef: "registry.lan:5000/app:v1", want: true},
+		{pattern: "registry.lan:5000/app", srcRef: "registry.lan:5001/app:v1", want: false},
+		{pattern: "registry.lan:5000/*", srcRef: "registry.lan:5000/team/app:v1", want: true},
+		{pattern: "registry.lan:5000", srcRef: "registry.lan:5000/app:v1", want: false}, // repository "registry.lan", tag "5000"
+		// tag-only references from backups created by earlier versions
+		{pattern: "*", srcRef: "v1", want: true},
+		{pattern: "*:v1", srcRef: "v1", want: true},
+		{pattern: "*:v2", srcRef: "v1", want: false},
+		{pattern: "library/alpine", srcRef: "v1", want: false},
+		{pattern: "lib*", srcRef: "v1", want: false},
+		// invalid stored reference
+		{pattern: "*", srcRef: "registry.example.com:5000:6000/app:v1", want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.pattern+" "+tt.srcRef, func(t *testing.T) {
+			p, err := parseIncludePattern(tt.pattern)
+			if err != nil {
+				t.Fatal(err)
+			}
+			tag := tt.srcRef
+			if i := strings.LastIndex(tag, ":"); i >= 0 {
+				tag = tag[i+1:]
+			}
+			if got := p.matches(tt.srcRef, tag); got != tt.want {
+				t.Errorf("pattern %q matches %q = %v, want %v", tt.pattern, tt.srcRef, got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_selectRestoreRefs(t *testing.T) {
+	srcRefs := []string{"docker.io/library/alpine:3.19.0", "docker.io/library/busybox:1.36.1", "docker.io/library/nginx:1.25-alpine", "docker.io/library/busybox:1.37.0"}
+	tags := []string{"3.19.0", "1.36.1", "1.25-alpine", "1.37.0"}
+	parse := func(t *testing.T, patterns ...string) []includePattern {
+		t.Helper()
+		parsed, err := parseIncludePatterns(patterns)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return parsed
+	}
+
+	t.Run("selects matching artifacts and reports skipped repositories", func(t *testing.T) {
+		selected, skipped, err := selectRestoreRefs(parse(t, "library/alpine", "library/busybox:1.36.1"), srcRefs, tags)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := []int{0, 1}; !reflect.DeepEqual(selected, want) {
+			t.Errorf("selected = %v, want %v", selected, want)
+		}
+		if want := []string{"docker.io/library/nginx"}; !reflect.DeepEqual(skipped, want) {
+			t.Errorf("skipped = %v, want %v", skipped, want)
+		}
+	})
+
+	t.Run("unmatched patterns are all reported with suggestions", func(t *testing.T) {
+		_, _, err := selectRestoreRefs(parse(t, "alpine", "library/alpine", "redis", "*/redis"), srcRefs, tags)
+		if err == nil {
+			t.Fatal("expected an error for patterns that match nothing")
+		}
+		for _, want := range []string{`"alpine" (did you mean "library/alpine"?)`, `"redis"`, `"*/redis"`} {
+			if !strings.Contains(err.Error(), want) {
+				t.Errorf("error %q does not contain %q", err, want)
+			}
+		}
+		if got := strings.Count(err.Error(), "did you mean"); got != 1 {
+			t.Errorf("error %q has %d suggestion(s), want 1", err, got)
+		}
+	})
+
+	t.Run("no suggestion when the last component contains '*'", func(t *testing.T) {
+		_, _, err := selectRestoreRefs(parse(t, "other/alp*"), srcRefs, tags)
+		if err == nil {
+			t.Fatal("expected an error for a pattern that matches nothing")
+		}
+		if strings.Contains(err.Error(), "did you mean") {
+			t.Errorf("error %q has a suggestion for a pattern with '*'", err)
+		}
+	})
+
+	t.Run("tag-only backup from an earlier version", func(t *testing.T) {
+		selected, skipped, err := selectRestoreRefs(parse(t, "*:v1"), []string{"v1", "v2"}, []string{"v1", "v2"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := []int{0}; !reflect.DeepEqual(selected, want) {
+			t.Errorf("selected = %v, want %v", selected, want)
+		}
+		if len(skipped) != 0 {
+			t.Errorf("skipped = %v, want none", skipped)
+		}
+	})
+}
+
+func Test_doRestore_include(t *testing.T) {
+	// docker.io/library/nginx and mirror.gcr.io/library/nginx collide in the target
+	refs := []string{"docker.io/library/nginx:1.25", "mirror.gcr.io/library/nginx:1.25", "docker.io/library/alpine:3.19"}
+	run := func(t *testing.T, patterns ...string) (map[string]*memory.Store, []string, error) {
+		t.Helper()
+		includePatterns, err := parseIncludePatterns(patterns)
+		if err != nil {
+			t.Fatal(err)
+		}
+		opts := &restoreOptions{input: newRestoreTestTarWithRefs(t, refs...), target: "registry.example.com", includePatterns: includePatterns}
+		recorder := &displaytest.CallRecorder{}
+		statusHandler := &displaytest.RecordingRestoreStatusHandler{Recorder: recorder}
+		metadataHandler := &displaytest.RecordingRestoreMetadataHandler{Recorder: recorder}
+		newTarget, stores := newRestoreTestTargets()
+		err = doRestore(context.Background(), opts, logrus.New(), newTarget, time.Now(), statusHandler, metadataHandler)
+		return stores, recorder.Snapshot(), err
+	}
+
+	t.Run("selecting one of two colliding repositories", func(t *testing.T) {
+		stores, calls, err := run(t, "docker.io/library/nginx")
+		if err != nil {
+			t.Fatal(err)
+		}
+		store, ok := stores["registry.example.com/library/nginx"]
+		if !ok || len(stores) != 1 {
+			t.Fatalf("restored to %v, want only registry.example.com/library/nginx", stores)
+		}
+		if _, err := store.Resolve(context.Background(), "1.25"); err != nil {
+			t.Errorf("tag 1.25 not restored: %v", err)
+		}
+		if !slices.Contains(calls, "OnRepositoriesSkipped") {
+			t.Errorf("handler calls = %v, want OnRepositoriesSkipped", calls)
+		}
+	})
+
+	t.Run("collision suggests adding the registry to the pattern", func(t *testing.T) {
+		stores, _, err := run(t, "library/nginx")
+		var oerr *oerrors.Error
+		if !errors.As(err, &oerr) || !errors.Is(err, errRepositoryCollision) {
+			t.Fatalf("doRestore() error = %v, want a collision", err)
+		}
+		if !strings.Contains(oerr.Recommendation, "--include") {
+			t.Errorf("recommendation %q does not suggest --include", oerr.Recommendation)
+		}
+		if len(stores) != 0 {
+			t.Errorf("restored to %v, want nothing pushed", stores)
+		}
+	})
+
+	t.Run("display errors stop the restore", func(t *testing.T) {
+		includePatterns, err := parseIncludePatterns([]string{"library/alpine"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		wantErr := errors.New("display failed")
+		for _, metadataHandler := range []*displaytest.RecordingRestoreMetadataHandler{
+			{Recorder: &displaytest.CallRecorder{}, TagsFoundErr: wantErr},
+			{Recorder: &displaytest.CallRecorder{}, RepositoriesSkippedErr: wantErr},
+		} {
+			opts := &restoreOptions{input: newRestoreTestTarWithRefs(t, refs...), target: "registry.example.com", includePatterns: includePatterns}
+			newTarget, stores := newRestoreTestTargets()
+			err := doRestore(context.Background(), opts, logrus.New(), newTarget, time.Now(), &displaytest.RecordingRestoreStatusHandler{Recorder: metadataHandler.Recorder}, metadataHandler)
+			if !errors.Is(err, wantErr) {
+				t.Errorf("doRestore() error = %v, want %v", err, wantErr)
+			}
+			if len(stores) != 0 {
+				t.Errorf("restored to %v, want nothing pushed", stores)
+			}
+		}
+	})
+
+	t.Run("unmatched pattern fails before pushing", func(t *testing.T) {
+		stores, _, err := run(t, "library/redis")
+		if err == nil {
+			t.Fatal("expected an error for a pattern that matches nothing")
+		}
+		if len(stores) != 0 {
+			t.Errorf("restored to %v, want nothing pushed", stores)
+		}
+	})
+}
+
+func Test_restoreCmd_invalidInclude(t *testing.T) {
+	cmd := restoreCmd()
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{"--input", t.TempDir(), "--include", "library/alpine:", "localhost:5000"})
+	err := cmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "invalid --include pattern") {
+		t.Fatalf("Execute() error = %v, want invalid --include pattern", err)
 	}
 }

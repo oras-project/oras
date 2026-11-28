@@ -60,10 +60,11 @@ func (h *RecordingRestoreStatusHandler) PostCopy(context.Context, ocispec.Descri
 // RecordingRestoreMetadataHandler records restore metadata handler calls.
 type RecordingRestoreMetadataHandler struct {
 	metadata.Discard
-	Recorder          *CallRecorder
-	TagsFoundErr      error
-	ArtifactPushedErr error
-	CompletedErr      error
+	Recorder               *CallRecorder
+	TagsFoundErr           error
+	RepositoriesSkippedErr error
+	ArtifactPushedErr      error
+	CompletedErr           error
 }
 
 func (h *RecordingRestoreMetadataHandler) OnTarLoaded(string, int64) error {
@@ -71,9 +72,14 @@ func (h *RecordingRestoreMetadataHandler) OnTarLoaded(string, int64) error {
 	return nil
 }
 
-func (h *RecordingRestoreMetadataHandler) OnTagsFound([]string) error {
+func (h *RecordingRestoreMetadataHandler) OnTagsFound([]string, int) error {
 	h.Recorder.Record("OnTagsFound")
 	return h.TagsFoundErr
+}
+
+func (h *RecordingRestoreMetadataHandler) OnRepositoriesSkipped([]string) error {
+	h.Recorder.Record("OnRepositoriesSkipped")
+	return h.RepositoriesSkippedErr
 }
 
 func (h *RecordingRestoreMetadataHandler) OnArtifactPushed(string, string, int) error {

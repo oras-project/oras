@@ -704,6 +704,44 @@ var _ = Describe("ORAS users:", func() {
 
 			CompareRef(srcRef, restoredRef)
 		})
+
+		It("should restore only the artifacts selected with --include", func() {
+			ns := restoreTestRepo("multi-repo-include")
+			backupDir := newMultiRepoBackup("backup-include",
+				"src.example.com/"+ns+"/a:"+foobar.Tag,
+				"src.example.com/"+ns+"/b:"+foobar.Tag)
+			testRepo := restoreTestRepo("multi-repo-include-target")
+			dstRef := fmt.Sprintf("%s/%s", ZOTHost, testRepo)
+
+			ORAS("restore", "--input", backupDir, Flags.ExcludeReferrers, "--include", ns+"/a", dstRef).
+				MatchKeyWords("Selected 1 of 2 tag(s)", "Skipped 1 repository(ies)", "src.example.com/"+ns+"/b", "Successfully restored 1 tag(s)").
+				Exec()
+
+			// only the selected repository is restored
+			CompareRef(RegistryRef(ZOTHost, ImageRepo, foobar.Tag), RegistryRef(ZOTHost, testRepo+"/"+ns+"/a", foobar.Tag))
+			ORAS("manifest", "fetch", RegistryRef(ZOTHost, testRepo+"/"+ns+"/b", foobar.Tag)).
+				ExpectFailure().
+				MatchErrKeyWords("Error response from registry:", "not found").
+				Exec()
+		})
+
+		It("should fail before pushing when an --include pattern matches nothing", func() {
+			ns := restoreTestRepo("multi-repo-include-unmatched")
+			backupDir := newMultiRepoBackup("backup-include-unmatched",
+				"src.example.com/"+ns+"/a:"+foobar.Tag)
+			testRepo := restoreTestRepo("multi-repo-include-unmatched-target")
+			dstRef := fmt.Sprintf("%s/%s", ZOTHost, testRepo)
+
+			ORAS("restore", "--input", backupDir, Flags.ExcludeReferrers, "--include", "other/a", dstRef).ExpectFailure().
+				MatchErrKeyWords("Error:", "match nothing in the backup", `did you mean "`+ns+`/a"?`).
+				Exec()
+
+			// Verify nothing was pushed
+			ORAS("manifest", "fetch", RegistryRef(ZOTHost, testRepo+"/"+ns+"/a", foobar.Tag)).
+				ExpectFailure().
+				MatchErrKeyWords("Error response from registry:", "not found").
+				Exec()
+		})
 	})
 
 	When("handling error cases", func() {
