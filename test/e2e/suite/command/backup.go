@@ -515,6 +515,23 @@ var _ = Describe("ORAS users:", func() {
 			restored := ORAS("manifest", "fetch", RegistryRef(ZOTHost, testRepo+"/"+ArtifactRepo, ma.Tag)).Exec().Out.Contents()
 			Expect(string(restored)).To(Equal(ma.LinuxAMD64Manifest))
 		})
+
+		It("should warn when restore replaces a multi-arch tag with a platform manifest", func() {
+			backupDir := filepath.Join(GinkgoT().TempDir(), "backup-platform-warning")
+			srcRef := RegistryRef(ZOTHost, ArtifactRepo, ma.Tag)
+			ORAS("backup", "--output", backupDir, "--platform", "linux/amd64", srcRef).Exec()
+
+			testRepo := backupTestRepo("restore-platform-warning")
+			restoredRef := RegistryRef(ZOTHost, testRepo+"/"+ArtifactRepo, ma.Tag)
+			prepare(srcRef, restoredRef)
+
+			ORAS("restore", "--input", backupDir, Flags.ExcludeReferrers, fmt.Sprintf("%s/%s", ZOTHost, testRepo)).
+				MatchErrKeyWords("currently points to multi-platform index", ma.Digest, "restoring replaces it with a single-platform manifest").
+				Exec()
+
+			restored := ORAS("manifest", "fetch", restoredRef).Exec().Out.Contents()
+			Expect(string(restored)).To(Equal(ma.LinuxAMD64Manifest))
+		})
 	})
 
 	When("using --distribution-spec flag", func() {

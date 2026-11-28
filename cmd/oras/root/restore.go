@@ -30,6 +30,7 @@ import (
 	"github.com/oras-project/oras-go/v3/errdef"
 	"github.com/oras-project/oras-go/v3/registry"
 	"github.com/oras-project/oras-go/v3/registry/remote/properties"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"oras.land/oras/cmd/oras/internal/argument"
 	"oras.land/oras/cmd/oras/internal/command"
@@ -38,6 +39,7 @@ import (
 	"oras.land/oras/cmd/oras/internal/display/status"
 	oerrors "oras.land/oras/cmd/oras/internal/errors"
 	"oras.land/oras/cmd/oras/internal/option"
+	"oras.land/oras/internal/descriptor"
 	orasio "oras.land/oras/internal/io"
 )
 
@@ -146,12 +148,13 @@ func runRestore(cmd *cobra.Command, opts *restoreOptions) error {
 		return opts.NewRepository(repo, opts.Common, logger)
 	}
 	statusHandler, metadataHandler := display.NewRestoreHandler(opts.Printer, opts.TTY, nil, opts.dryRun)
-	return doRestore(ctx, opts, newTarget, startTime, statusHandler, metadataHandler)
+	return doRestore(ctx, opts, logger, newTarget, startTime, statusHandler, metadataHandler)
 }
 
 func doRestore(
 	ctx context.Context,
 	opts *restoreOptions,
+	logger logrus.FieldLogger,
 	newTarget func(repo string) (oras.GraphTarget, error),
 	startTime time.Time,
 	statusHandler status.RestoreHandler,
@@ -231,14 +234,6 @@ func doRestore(
 				return fmt.Errorf("failed to count referrers for tag %q: %w", tag, err)
 			}
 		}
-		if opts.dryRun {
-			if err := metadataHandler.OnArtifactPushed(srcRefs[i], dstRef, referrerCount); err != nil {
-				return err
-			}
-			// dry run, skip actual copy
-			continue
-		}
-
 		dstRepo, ok := targets[dstRepos[i]]
 		if !ok {
 			dstRepo, err = newTarget(dstRepos[i])
@@ -246,6 +241,14 @@ func doRestore(
 				return fmt.Errorf("failed to prepare target repository %q: %w", dstRepos[i], err)
 			}
 			targets[dstRepos[i]] = dstRepo
+		}
+		warnIfReplacingIndex(ctx, dstRepo, tag, roots[i], logger)
+		if opts.dryRun {
+			if err := metadataHandler.OnArtifactPushed(srcRefs[i], dstRef, referrerCount); err != nil {
+				return err
+			}
+			// dry run, skip actual copy
+			continue
 		}
 		if err := func() (retErr error) {
 			trackedDst, err := statusHandler.StartTracking(dstRepo)
@@ -275,6 +278,22 @@ func doRestore(
 
 	duration := time.Since(startTime)
 	return metadataHandler.OnRestoreCompleted(len(tags), opts.target, duration)
+}
+
+// warnIfReplacingIndex warns when restoring a single manifest would narrow an
+// existing multi-platform tag. Resolving the destination is advisory only.
+func warnIfReplacingIndex(ctx context.Context, dst oras.ReadOnlyTarget, tag string, root ocispec.Descriptor, logger logrus.FieldLogger) {
+	existing, err := dst.Resolve(ctx, tag)
+	if errors.Is(err, errdef.ErrNotFound) {
+		return
+	}
+	if err != nil {
+		logger.Debugf("failed to resolve destination tag %q: %v", tag, err)
+		return
+	}
+	if existing.Digest != root.Digest && descriptor.IsIndex(existing) && !descriptor.IsIndex(root) {
+		logger.Warnf("tag %q currently points to multi-platform index %s; restoring replaces it with a single-platform manifest", tag, existing.Digest)
+	}
 }
 
 // resolveRestoreRefs resolves the artifacts to restore from the backup in src.

@@ -16,6 +16,7 @@ limitations under the License.
 package root
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -26,10 +27,14 @@ import (
 	"testing"
 	"time"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/oras-project/oras-go/v3"
+	"github.com/oras-project/oras-go/v3/content"
 	"github.com/oras-project/oras-go/v3/content/memory"
 	"github.com/oras-project/oras-go/v3/content/oci"
+	"github.com/sirupsen/logrus"
 	"oras.land/oras/cmd/oras/internal/display/displaytest"
+	"oras.land/oras/internal/docker"
 	orasio "oras.land/oras/internal/io"
 )
 
@@ -92,7 +97,7 @@ func Test_doRestore_handlerCalls(t *testing.T) {
 	metadataHandler := &displaytest.RecordingRestoreMetadataHandler{Recorder: recorder}
 
 	newTarget, _ := newRestoreTestTargets()
-	if err := doRestore(context.Background(), opts, newTarget, time.Now(), statusHandler, metadataHandler); err != nil {
+	if err := doRestore(context.Background(), opts, logrus.New(), newTarget, time.Now(), statusHandler, metadataHandler); err != nil {
 		t.Fatal(err)
 	}
 
@@ -115,13 +120,144 @@ func Test_doRestore_dryRun(t *testing.T) {
 	metadataHandler := &displaytest.RecordingRestoreMetadataHandler{Recorder: recorder}
 
 	newTarget, _ := newRestoreTestTargets()
-	if err := doRestore(context.Background(), opts, newTarget, time.Now(), statusHandler, metadataHandler); err != nil {
+	if err := doRestore(context.Background(), opts, logrus.New(), newTarget, time.Now(), statusHandler, metadataHandler); err != nil {
 		t.Fatal(err)
 	}
 
 	want := []string{"OnTarLoaded", "OnTagsFound", "OnArtifactPushed", "OnRestoreCompleted"}
 	if got := recorder.Snapshot(); !reflect.DeepEqual(got, want) {
 		t.Errorf("handler calls = %v, want %v", got, want)
+	}
+}
+
+func Test_doRestore_dryRunWarnsWhenReplacingIndex(t *testing.T) {
+	ctx := context.Background()
+	store := memory.New()
+	index, err := oras.PushBytes(ctx, store, ocispec.MediaTypeImageIndex, []byte(`{"schemaVersion":2,"manifests":[]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Tag(ctx, index, "v1"); err != nil {
+		t.Fatal(err)
+	}
+
+	var logs bytes.Buffer
+	logger := logrus.New()
+	logger.SetOutput(&logs)
+	logger.SetFormatter(&logrus.TextFormatter{DisableTimestamp: true})
+	opts := &restoreOptions{input: newRestoreTestTar(t), target: "localhost:5000/example", dryRun: true}
+	newTarget := func(string) (oras.GraphTarget, error) { return store, nil }
+	recorder := &displaytest.CallRecorder{}
+	statusHandler := &displaytest.RecordingRestoreStatusHandler{Recorder: recorder}
+	metadataHandler := &displaytest.RecordingRestoreMetadataHandler{Recorder: recorder}
+
+	if err := doRestore(ctx, opts, logger, newTarget, time.Now(), statusHandler, metadataHandler); err != nil {
+		t.Fatal(err)
+	}
+	if got := logs.String(); !strings.Contains(got, "level=warning") || !strings.Contains(got, `tag \"v1\" currently points to multi-platform index`) {
+		t.Fatalf("logs = %q, want index replacement warning", got)
+	}
+	got, err := store.Resolve(ctx, "v1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Digest != index.Digest {
+		t.Errorf("dry run changed tag v1 from %s to %s", index.Digest, got.Digest)
+	}
+}
+
+func Test_warnIfReplacingIndex(t *testing.T) {
+	tests := []struct {
+		name              string
+		existingMediaType string
+		rootMediaType     string
+		sameDescriptor    bool
+		sameDigest        bool
+		wantWarning       bool
+	}{
+		{name: "OCI index replaced by manifest", existingMediaType: ocispec.MediaTypeImageIndex, rootMediaType: ocispec.MediaTypeImageManifest, wantWarning: true},
+		{name: "Docker manifest list replaced by manifest", existingMediaType: docker.MediaTypeManifestList, rootMediaType: ocispec.MediaTypeImageManifest, wantWarning: true},
+		{name: "missing destination tag", rootMediaType: ocispec.MediaTypeImageManifest},
+		{name: "same index", existingMediaType: ocispec.MediaTypeImageIndex, rootMediaType: ocispec.MediaTypeImageIndex, sameDescriptor: true},
+		{name: "same digest", existingMediaType: ocispec.MediaTypeImageIndex, rootMediaType: ocispec.MediaTypeImageManifest, sameDigest: true},
+		{name: "index replaced by index", existingMediaType: ocispec.MediaTypeImageIndex, rootMediaType: ocispec.MediaTypeImageIndex},
+		{name: "manifest replaced by manifest", existingMediaType: ocispec.MediaTypeImageManifest, rootMediaType: ocispec.MediaTypeImageManifest},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			var target oras.ReadOnlyTarget = memory.New()
+			root := content.NewDescriptorFromBytes(tt.rootMediaType, []byte("root"))
+			if tt.existingMediaType != "" {
+				existing := content.NewDescriptorFromBytes(tt.existingMediaType, []byte("existing"))
+				target = &staticResolveTarget{Store: memory.New(), desc: existing}
+				if tt.sameDescriptor {
+					root = existing
+				} else if tt.sameDigest {
+					root.Digest = existing.Digest
+				}
+			}
+
+			var logs bytes.Buffer
+			logger := logrus.New()
+			logger.SetOutput(&logs)
+			logger.SetFormatter(&logrus.TextFormatter{DisableTimestamp: true})
+			warnIfReplacingIndex(ctx, target, "v1", root, logger)
+
+			gotWarning := strings.Contains(logs.String(), "level=warning")
+			if gotWarning != tt.wantWarning {
+				t.Errorf("logs = %q, wantWarning %v", logs.String(), tt.wantWarning)
+			}
+		})
+	}
+}
+
+type staticResolveTarget struct {
+	*memory.Store
+	desc ocispec.Descriptor
+}
+
+func (t *staticResolveTarget) Resolve(context.Context, string) (ocispec.Descriptor, error) {
+	return t.desc, nil
+}
+
+type resolveOnceFailingTarget struct {
+	*memory.Store
+	err    error
+	failed bool
+}
+
+func (t *resolveOnceFailingTarget) Resolve(ctx context.Context, reference string) (ocispec.Descriptor, error) {
+	if !t.failed {
+		t.failed = true
+		return ocispec.Descriptor{}, t.err
+	}
+	return t.Store.Resolve(ctx, reference)
+}
+
+func Test_doRestore_continuesWhenReplacementCheckFails(t *testing.T) {
+	ctx := context.Background()
+	wantErr := errors.New("destination resolve unavailable")
+	store := &resolveOnceFailingTarget{Store: memory.New(), err: wantErr}
+	newTarget := func(string) (oras.GraphTarget, error) { return store, nil }
+	var logs bytes.Buffer
+	logger := logrus.New()
+	logger.SetLevel(logrus.DebugLevel)
+	logger.SetOutput(&logs)
+	logger.SetFormatter(&logrus.TextFormatter{DisableTimestamp: true})
+	opts := &restoreOptions{input: newRestoreTestTar(t), target: "localhost:5000/example"}
+	recorder := &displaytest.CallRecorder{}
+	statusHandler := &displaytest.RecordingRestoreStatusHandler{Recorder: recorder}
+	metadataHandler := &displaytest.RecordingRestoreMetadataHandler{Recorder: recorder}
+
+	if err := doRestore(ctx, opts, logger, newTarget, time.Now(), statusHandler, metadataHandler); err != nil {
+		t.Fatalf("doRestore() error = %v, want restore to continue", err)
+	}
+	if _, err := store.Store.Resolve(ctx, "v1"); err != nil {
+		t.Fatalf("tag v1 was not restored: %v", err)
+	}
+	if got := logs.String(); !strings.Contains(got, "level=debug") || !strings.Contains(got, wantErr.Error()) {
+		t.Errorf("logs = %q, want debug message for resolve failure", got)
 	}
 }
 
@@ -133,7 +269,7 @@ func Test_doRestore_artifactPushedError(t *testing.T) {
 	metadataHandler := &displaytest.RecordingRestoreMetadataHandler{Recorder: recorder, ArtifactPushedErr: wantErr}
 
 	newTarget, _ := newRestoreTestTargets()
-	err := doRestore(context.Background(), opts, newTarget, time.Now(), statusHandler, metadataHandler)
+	err := doRestore(context.Background(), opts, logrus.New(), newTarget, time.Now(), statusHandler, metadataHandler)
 	if !errors.Is(err, wantErr) {
 		t.Fatalf("doRestore() error = %v, want %v", err, wantErr)
 	}
@@ -190,7 +326,7 @@ func Test_doRestore_fullReferenceBackup(t *testing.T) {
 			metadataHandler := &displaytest.RecordingRestoreMetadataHandler{Recorder: recorder}
 			newTarget, stores := newRestoreTestTargets()
 
-			if err := doRestore(ctx, opts, newTarget, time.Now(), statusHandler, metadataHandler); err != nil {
+			if err := doRestore(ctx, opts, logrus.New(), newTarget, time.Now(), statusHandler, metadataHandler); err != nil {
 				t.Fatal(err)
 			}
 
@@ -230,7 +366,7 @@ func Test_doRestore_collision(t *testing.T) {
 		metadataHandler := &displaytest.RecordingRestoreMetadataHandler{Recorder: recorder}
 		newTarget, stores := newRestoreTestTargets()
 
-		if err := doRestore(context.Background(), opts, newTarget, time.Now(), statusHandler, metadataHandler); err == nil {
+		if err := doRestore(context.Background(), opts, logrus.New(), newTarget, time.Now(), statusHandler, metadataHandler); err == nil {
 			t.Errorf("dryRun=%v: expected an error for two repositories restoring to the same target", dryRun)
 		}
 		if len(stores) != 0 {
